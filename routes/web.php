@@ -42,4 +42,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reports/kardex', [ReportController::class, 'kardex'])->name('reports.kardex');
 });
 
+// routes/web.php
+Route::post('/movements', [MovementController::class, 'store'])->name('movements.store');
+
 require __DIR__.'/auth.php'; // Breeze

@@ -14,5 +14,9 @@ class BasicSeeder extends Seeder
     {
         \App\Models\Category::firstOrCreate(['name'=>'General']);
         \App\Models\Supplier::firstOrCreate(['name'=>'Genérico']);
+        // database/seeders/BasicSeeder.php (agrega)
+        \App\Models\Warehouse::firstOrCreate(['code'=>'ALM-01'], ['name'=>'Almacén Central']);
+        \App\Models\Warehouse::firstOrCreate(['code'=>'ALM-02'], ['name'=>'Almacén Secundario']);
+
     }
 }

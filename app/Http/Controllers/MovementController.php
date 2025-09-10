@@ -12,9 +12,10 @@ class MovementController extends Controller
      */
     public function index()
     {
-        $items = \App\Models\Movement::with('product','user')->latest()->paginate(20);
-        $products = \App\Models\Product::orderBy('name')->get();
-        return view('movements.index', compact('items','products'));
+        $items = \App\Models\Movement::with(['product','warehouse','user'])->latest()->paginate(20);
+        $products = \App\Models\Product::orderBy('name_item')->get();
+        $warehouses = \App\Models\Warehouse::orderBy('name')->get();
+        return view('movements.index', compact('items','products','warehouses'));
     }
 
     public function storeIn() {
@@ -78,9 +79,41 @@ class MovementController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
-        //
+    public function store(\App\Http\Requests\StoreMovementRequest $req) {
+        \DB::transaction(function() use ($req) {
+            $p = \App\Models\Product::findOrFail($req->product_id);
+            $w = \App\Models\Warehouse::findOrFail($req->warehouse_id);
+
+            $stock = \App\Models\ProductStock::firstOrCreate(
+            ['product_id'=>$p->id,'warehouse_id'=>$w->id],
+            ['current_stock'=>0]
+            );
+
+            $qty = (int)$req->quantity;
+
+            if ($req->type === 'in') {
+            $stock->increment('current_stock', $qty);
+            } else {
+            if ($stock->current_stock < $qty) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                'quantity' => 'Stock insuficiente en '.$w->name,
+                ]);
+            }
+            $stock->decrement('current_stock', $qty);
+            }
+
+            \App\Models\Movement::create([
+            'product_id'=>$p->id,
+            'warehouse_id'=>$w->id,
+            'type'=>$req->type,
+            'quantity'=>$qty,
+            'note'=>$req->note,
+            'user_id'=>auth()->id(),
+            ]);
+        }
+    );
+
+    return back()->with('ok','Movimiento registrado');
     }
 
     /**
