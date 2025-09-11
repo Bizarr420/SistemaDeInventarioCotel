@@ -1,20 +1,20 @@
 <nav x-data="{ open: false }"
-     class="sticky top-0 z-50 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-gray-200">
+     class="sticky top-0 z-50 bg-white backdrop-blur supports-[backdrop-filter]:bg-white border-b border-gray-200">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
             <div class="flex items-center gap-x-8">
                 <!-- Logo -->
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2 font-bold text-lg">
-                    <x-application-logo class="block h-9 w-auto fill-current text-indigo-600" />
-                    <span class="hidden sm:inline text-gray-800">Inventario</span>
+                    <img src="{{ asset('images/Cotel.png') }}" alt="COTEL" class="h-16 w-auto sm:h-14 md:h-16 lg:h-20">
+                    <span class="hidden sm:inline text-gray-800"></span>
                 </a>
 
                 <!-- Navigation Links -->
                 <div class="hidden sm:flex items-center gap-x-8">
                     {{-- Dashboard --}}
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
+                        {{ __('Inventario') }}
                     </x-nav-link>
 
                     {{-- Productos (dropdown con subniveles) --}}
@@ -25,7 +25,7 @@
                                 @click.outside="openMenu=false"
                                 :aria-expanded="openMenu"
                                 aria-haspopup="menu"
-                                class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-700 focus:outline-none">
+                                class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 hover:text-cotel-orange focus:outline-none">
                             Productos
                             <svg class="ml-1 h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.13l3.71-3.9a.75.75 0 111.08 1.05l-4.24 4.46a.75.75 0 01-1.1 0L5.21 8.26a.75.75 0 01.02-1.05z" clip-rule="evenodd"/>
@@ -47,7 +47,7 @@
                                 <button type="button"
                                         @click="openSub = !openSub"
                                         :aria-expanded="openSub"
-                                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 inline-flex items-center justify-between">
+                                        class="w-full text-left px-4 py-2 text-sm text-gray-900 hover:text-cotel-orange hover:bg-orange-50 inline-flex items-center justify-between">
                                     Inventario
                                     <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                         <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.19 10 7.23 6.29a.75.75 0 111.06-1.06l4.46 4.24a.75.75 0 010 1.08l-4.46 4.24a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/>
@@ -81,7 +81,7 @@
                                 @click.outside="openRep=false"
                                 :aria-expanded="openRep"
                                 aria-haspopup="menu"
-                                class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-700 focus:outline-none">
+                                class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 hover:text-cotel-orange focus:outline-none">
                             Reportes
                             <svg class="ml-1 h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.13l3.71-3.9a.75.75 0 111.08 1.05l-4.24 4.46a.75.75 0 01-1.1 0L5.21 8.26a.75.75 0 01.02-1.05z" clip-rule="evenodd"/>
@@ -106,7 +106,7 @@
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button type="button"
-                                class="inline-flex items-center px-3 py-2 text-sm leading-4 font-medium rounded-md text-gray-600 hover:text-gray-800 focus:outline-none transition">
+                                class="inline-flex items-center px-3 py-2 text-sm leading-4 font-medium rounded-md text-gray-900 hover:text-cotel-orange">
                             <div>{{ Auth::user()->name }}</div>
                             <svg class="ml-1 h-4 w-4" viewBox="0 0 20 20" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
