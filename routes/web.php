@@ -46,3 +46,5 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/movements', [MovementController::class, 'store'])->name('movements.store');
 
 require __DIR__.'/auth.php'; // Breeze
+Route::resource('products', ProductController::class)->middleware('auth');
+
