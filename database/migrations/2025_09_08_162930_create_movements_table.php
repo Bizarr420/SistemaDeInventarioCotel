@@ -13,6 +13,12 @@ return new class extends Migration
     {
         Schema::create('movements', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('warehouse_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->enum('type', ['in', 'out']);
+            $table->unsignedInteger('quantity');
+            $table->string('note', 255)->nullable();
             $table->timestamps();
         });
     }

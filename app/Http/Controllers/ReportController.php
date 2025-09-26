@@ -2,22 +2,33 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Movement;
+use App\Models\Product;
+use App\Models\ProductStock;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class ReportController extends Controller
 {
-    public function summary() {
-    return view('reports.summary', [
-        'totalProducts' => \App\Models\Product::count(),
-        'totalStock'    => \App\Models\Product::sum('stock'),
-        'lastMoves'     => \App\Models\Movement::with('product')->latest()->limit(10)->get(),
-    ]);
+    public function summary(): View
+    {
+        return view('reports.summary', [
+            'totalProducts' => Product::count(),
+            'totalStock' => ProductStock::sum('current_stock'),
+            'lastMovements' => Movement::with(['product', 'warehouse'])->latest()->limit(10)->get(),
+        ]);
     }
 
-    public function kardex() {
-    $product = \App\Models\Product::with('movements')->findOrFail(request('product_id'));
-    $moves = $product->movements()->orderBy('created_at')->get();
-    // puedes calcular el saldo acumulado en la vista o aquí
-    return view('reports.kardex', compact('product','moves'));
+    public function kardex(Request $request): View
+    {
+        $productId = $request->integer('product_id');
+        $product = $productId ? Product::with(['movements' => function ($query) {
+            $query->orderBy('created_at');
+        }, 'movements.warehouse', 'movements.user'])->find($productId) : null;
+
+        return view('reports.kardex', [
+            'product' => $product,
+            'products' => Product::orderBy('name_item')->get(),
+        ]);
     }
 }
