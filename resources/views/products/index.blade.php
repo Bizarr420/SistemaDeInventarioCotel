@@ -32,17 +32,21 @@
       </thead>
       <tbody>
         @forelse($products as $product)
-          <tr class="border-t">
+          <tr class="border-t text-gray-700">
             <td class="px-3 py-2">{{ $product->internal_code }}</td>
             <td class="px-3 py-2">{{ $product->part_number }}</td>
             <td class="px-3 py-2">{{ $product->item }}</td>
-            <td class="px-3 py-2">{{ $product->name_item }}</td>
+            <td class="px-3 py-2 font-medium text-gray-800">{{ $product->name_item }}</td>
             <td class="px-3 py-2">{{ $product->unit }}</td>
-            <td class="px-3 py-2 text-center font-semibold">{{ $product->total_stock }}</td>
+            <td class="px-3 py-2 text-center font-semibold text-gray-900">{{ $product->total_stock }}</td>
             <td class="px-3 py-2">
               @forelse($product->stocks as $stock)
-                <span class="inline-block rounded bg-slate-100 px-2 py-0.5 mr-1">
-                  {{ $stock->warehouse->code ?? $stock->warehouse->name }}: {{ $stock->current_stock }}
+                <span class="inline-flex items-center gap-1 rounded border border-slate-200 bg-slate-50 px-2 py-0.5 mr-1 text-slate-700">
+                  <span class="font-medium text-slate-900">{{ $stock->warehouse->code ?? $stock->warehouse->name }}</span>
+                  <span>- {{ $stock->current_stock }}</span>
+                  @if($stock->location)
+                    <span class="text-xs text-slate-500">({{ $stock->location }})</span>
+                  @endif
                 </span>
               @empty
                 <span class="text-gray-400">Sin stock</span>

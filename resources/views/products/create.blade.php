@@ -79,6 +79,7 @@
                         <option value="{{ $category->id }}" @selected(old('category_id') == $category->id)>{{ $category->name }}</option>
                     @endforeach
                 </select>
+                <p class="mt-1 text-xs"><a href="{{ route('categories.create') }}" class="text-orange-600 hover:underline">Crear nueva categoría</a></p>
                 @error('category_id') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
 
@@ -91,6 +92,7 @@
                         <option value="{{ $supplier->id }}" @selected(old('supplier_id') == $supplier->id)>{{ $supplier->name }}</option>
                     @endforeach
                 </select>
+                <p class="mt-1 text-xs"><a href="{{ route('suppliers.create') }}" class="text-orange-600 hover:underline">Registrar proveedor</a></p>
                 @error('supplier_id') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
 
@@ -117,6 +119,7 @@
                         <option value="{{ $warehouse->id }}" @selected(old('warehouse_id') == $warehouse->id)>{{ $warehouse->code }} - {{ $warehouse->name }}</option>
                     @endforeach
                 </select>
+                <p class="mt-1 text-xs"><a href="{{ route('warehouses.create') }}" class="text-orange-600 hover:underline">Crear almacén</a></p>
                 @error('warehouse_id') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
 
@@ -125,6 +128,15 @@
                 <input id="initial_stock" name="initial_stock" type="number" min="0" value="{{ old('initial_stock') }}"
                        class="mt-1 block w-full rounded-md text-gray-900 border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
                 @error('initial_stock') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="stock_location" class="block text-sm font-medium text-gray-700">Ubicación en almacén</label>
+                <input id="stock_location" name="stock_location" type="text" value="{{ old('stock_location') }}"
+                       placeholder="Ej. Estante A3"
+                       class="mt-1 block w-full rounded-md text-gray-900 border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                <p class="mt-1 text-xs text-gray-500">Opcional. Describe dónde se guarda el producto.</p>
+                @error('stock_location') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
         </div>
 

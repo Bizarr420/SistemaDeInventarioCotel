@@ -27,6 +27,7 @@ class StoreProductRequest extends FormRequest
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'warehouse_id' => ['nullable', 'exists:warehouses,id'],
             'initial_stock' => ['nullable', 'integer', 'min:0'],
+            'stock_location' => ['nullable', 'string', 'max:120'],
         ];
     }
 }
