@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('product_stocks', function (Blueprint $table) {
-            if (! Schema::hasColumn('product_stocks', 'location')) {
+        if (! Schema::hasColumn('product_stocks', 'location')) {
+            Schema::table('product_stocks', function (Blueprint $table) {
                 $table->string('location', 120)->nullable()->after('current_stock');
-            }
-        });
+            });
+        }
     }
 
     /**
@@ -23,10 +23,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('product_stocks', function (Blueprint $table) {
-            if (Schema::hasColumn('product_stocks', 'location')) {
+        if (Schema::hasColumn('product_stocks', 'location')) {
+            Schema::table('product_stocks', function (Blueprint $table) {
                 $table->dropColumn('location');
-            }
-        });
+            });
+        }
     }
 };
+
