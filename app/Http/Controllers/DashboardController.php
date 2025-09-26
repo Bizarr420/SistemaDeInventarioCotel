@@ -2,18 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Schema;
-use App\Models\Product;        // ✅ ESTE es el correcto
-// opcional si usas sumas de stock directamente:
-use App\Models\ProductStock;   // (por si lo necesitas en el dashboard)
+use App\Models\Product;
+use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(): View
     {
         $products = Product::with(['stocks.warehouse'])
-            ->orderBy('name_item')   // o el campo que prefieras
-            ->paginate(20)           // ✅ ahora $products es un LengthAwarePaginator
+            ->orderBy('name_item')
+            ->paginate(20)
             ->withQueryString();
 
         return view('dashboard.index', compact('products'));

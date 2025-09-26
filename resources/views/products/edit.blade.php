@@ -1,0 +1,108 @@
+@extends('layouts.app')
+
+@section('title', 'Editar Producto')
+
+@section('content')
+<div class="max-w-3xl mx-auto bg-white shadow-md rounded-lg p-6">
+    <h1 class="text-2xl font-bold text-gray-700 mb-6">Editar Producto</h1>
+
+    <form method="POST" action="{{ route('products.update', $product) }}" novalidate>
+        @csrf
+        @method('put')
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="internal_code" class="block text-sm font-medium text-gray-700">COD.INT.</label>
+                <input id="internal_code" name="internal_code" type="text" value="{{ old('internal_code', $product->internal_code) }}"
+                       class="mt-1 block w-full rounded-md text-gray-900 border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                @error('internal_code') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="part_number" class="block text-sm font-medium text-gray-700">Nro de parte</label>
+                <input id="part_number" name="part_number" type="text" value="{{ old('part_number', $product->part_number) }}"
+                       class="mt-1 block w-full rounded-md text-gray-900 border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                @error('part_number') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="item" class="block text-sm font-medium text-gray-700">Item</label>
+                <input id="item" name="item" type="text" value="{{ old('item', $product->item) }}"
+                       class="mt-1 block w-full rounded-md text-gray-900 border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                @error('item') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="name_item" class="block text-sm font-medium text-gray-700">Nombre de Ítem</label>
+                <input id="name_item" name="name_item" type="text" required value="{{ old('name_item', $product->name_item) }}"
+                       class="mt-1 block w-full rounded-md text-gray-900 border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                @error('name_item') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="cnd" class="block text-sm font-medium text-gray-700">CND</label>
+                <input id="cnd" name="cnd" type="text" value="{{ old('cnd', $product->cnd) }}"
+                       class="mt-1 block w-full rounded-md text-gray-900 border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                @error('cnd') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="unit" class="block text-sm font-medium text-gray-700">Und</label>
+                <input id="unit" name="unit" type="text" value="{{ old('unit', $product->unit) }}"
+                       class="mt-1 block w-full rounded-md text-gray-900 border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                @error('unit') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="mac" class="block text-sm font-medium text-gray-700">Código MAC</label>
+                <input id="mac" name="mac" type="text" value="{{ old('mac', $product->mac) }}"
+                       class="mt-1 block w-full rounded-md text-gray-900 border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                @error('mac') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="category_id" class="block text-sm font-medium text-gray-700">Categoría</label>
+                <select id="category_id" name="category_id"
+                        class="mt-1 block w-full rounded-md border-gray-300 text-gray-900 bg-white shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                    <option value="">-- Seleccionar --</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}" @selected(old('category_id', $product->category_id) == $category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </select>
+                @error('category_id') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="supplier_id" class="block text-sm font-medium text-gray-700">Proveedor</label>
+                <select id="supplier_id" name="supplier_id"
+                        class="mt-1 block w-full rounded-md border-gray-300 text-gray-900 bg-white shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                    <option value="">-- Seleccionar --</option>
+                    @foreach($suppliers as $supplier)
+                        <option value="{{ $supplier->id }}" @selected(old('supplier_id', $product->supplier_id) == $supplier->id)>{{ $supplier->name }}</option>
+                    @endforeach
+                </select>
+                @error('supplier_id') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div class="md:col-span-2">
+                <label for="description" class="block text-sm font-medium text-gray-700">Descripción</label>
+                <textarea id="description" name="description" rows="3"
+                          class="mt-1 block w-full rounded-md text-gray-900 border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">{{ old('description', $product->description) }}</textarea>
+                @error('description') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div class="md:col-span-2">
+                <label for="note" class="block text-sm font-medium text-gray-700">Observación</label>
+                <input id="note" name="note" type="text" value="{{ old('note', $product->note) }}"
+                       class="mt-1 block w-full rounded-md text-gray-900 border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                @error('note') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-end">
+            <a href="{{ route('products.index') }}" class="mr-3 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancelar</a>
+            <button type="submit" class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700">Actualizar</button>
+        </div>
+    </form>
+</div>
+@endsection

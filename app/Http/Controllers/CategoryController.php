@@ -3,63 +3,63 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class CategoryController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): View
     {
-        //
+        $categories = Category::orderBy('name')->paginate(15)->withQueryString();
+
+        return view('categories.index', compact('categories'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(): View
     {
-        //
+        return view('categories.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        //
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:150', 'unique:categories,name'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        Category::create($data);
+
+        return redirect()->route('categories.index')->with('ok', 'Categoría creada correctamente.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Category $category)
+    public function edit(Category $category): View
     {
-        //
+        return view('categories.edit', compact('category'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Category $category)
+    public function update(Request $request, Category $category): RedirectResponse
     {
-        //
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:150', 'unique:categories,name,' . $category->id],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $category->update($data);
+
+        return redirect()->route('categories.index')->with('ok', 'Categoría actualizada correctamente.');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Category $category)
+    public function destroy(Category $category): RedirectResponse
     {
-        //
-    }
+        if ($category->products()->exists()) {
+            return redirect()
+                ->route('categories.index')
+                ->with('error', 'No puedes eliminar una categoría con productos asociados.');
+        }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Category $category)
-    {
-        //
+        $category->delete();
+
+        return redirect()->route('categories.index')->with('ok', 'Categoría eliminada correctamente.');
     }
 }

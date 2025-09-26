@@ -1,13 +1,19 @@
 <?php
-namespace App\Models;
-// app/Models/Warehouse.php
-use Illuminate\Database\Eloquent\Model;   // <-- IMPORTANTE
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Warehouse extends Model
 {
-    protected $fillable = ['name','code','location'];
+    use HasFactory;
 
-    public function stocks(){ return $this->hasMany(ProductStock::class); }
+    protected $fillable = ['name', 'code', 'location'];
+
+    public function stocks(): HasMany
+    {
+        return $this->hasMany(ProductStock::class);
+    }
 }
