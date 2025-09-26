@@ -73,6 +73,11 @@
                         Proveedores
                     </x-nav-link>
 
+                    {{-- Almacenes --}}
+                    <x-nav-link :href="route('warehouses.index')" :active="request()->routeIs('warehouses.*')">
+                        Almacenes
+                    </x-nav-link>
+
                     {{-- Reportes (dropdown simple) --}}
                     <div x-data="{ openRep:false }" class="relative">
                         <button type="button"
@@ -178,6 +183,10 @@
 
             <x-responsive-nav-link :href="route('suppliers.index')" :active="request()->routeIs('suppliers.*')">
                 Proveedores
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('warehouses.index')" :active="request()->routeIs('warehouses.*')">
+                Almacenes
             </x-responsive-nav-link>
 
             <details class="group">

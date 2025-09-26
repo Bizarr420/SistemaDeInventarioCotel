@@ -69,6 +69,7 @@
                         <option value="{{ $category->id }}" @selected(old('category_id', $product->category_id) == $category->id)>{{ $category->name }}</option>
                     @endforeach
                 </select>
+                <p class="mt-1 text-xs"><a href="{{ route('categories.create') }}" class="text-orange-600 hover:underline">Crear nueva categoría</a></p>
                 @error('category_id') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
 
@@ -81,6 +82,7 @@
                         <option value="{{ $supplier->id }}" @selected(old('supplier_id', $product->supplier_id) == $supplier->id)>{{ $supplier->name }}</option>
                     @endforeach
                 </select>
+                <p class="mt-1 text-xs"><a href="{{ route('suppliers.create') }}" class="text-orange-600 hover:underline">Registrar proveedor</a></p>
                 @error('supplier_id') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
 

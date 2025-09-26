@@ -44,9 +44,17 @@
     <h2 class="text-xl font-semibold text-gray-800 mt-6 mb-3">Stock por almacén</h2>
     <ul class="space-y-2">
       @forelse($product->stocks as $stock)
-        <li class="flex justify-between rounded bg-slate-50 px-3 py-2">
-          <span>{{ $stock->warehouse->name ?? 'Almacén' }}</span>
-          <span class="font-semibold">{{ $stock->current_stock }}</span>
+        <li class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-gray-700">
+          <div>
+            <span class="font-semibold text-gray-900">{{ $stock->warehouse->code ?? $stock->warehouse->name }}</span>
+            <span class="text-sm text-gray-500">{{ $stock->warehouse->name ?? '' }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-gray-900">{{ $stock->current_stock }}</span>
+            @if($stock->location)
+              <span class="text-xs text-gray-500">Ubicación: {{ $stock->location }}</span>
+            @endif
+          </div>
         </li>
       @empty
         <li class="text-gray-500">Sin stock registrado.</li>

@@ -54,16 +54,25 @@ class ProductController extends Controller
         $product = Product::create($data);
 
         if (
-            ! empty($data['warehouse_id']) &&
-            array_key_exists('initial_stock', $data) &&
-            $data['initial_stock'] !== null
+            ! empty($data['warehouse_id'] ?? null) &&
+            (
+                array_key_exists('initial_stock', $data)
+                || array_key_exists('stock_location', $data)
+            )
         ) {
+            $initialStock = array_key_exists('initial_stock', $data) && $data['initial_stock'] !== null
+                ? (int) $data['initial_stock']
+                : 0;
+
             ProductStock::updateOrCreate(
                 [
                     'product_id' => $product->id,
                     'warehouse_id' => $data['warehouse_id'],
                 ],
-                ['current_stock' => (int) $data['initial_stock']]
+                [
+                    'current_stock' => $initialStock,
+                    'location' => $data['stock_location'] ?? null,
+                ]
             );
         }
 
