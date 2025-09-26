@@ -8,7 +8,7 @@
     <a href="{{ route('suppliers.create') }}" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">Nuevo proveedor</a>
   </div>
 
-  <div class="overflow-x-auto bg-white shadow rounded-lg">
+  <div class="overflow-x-auto text-gray-900 bg-white shadow rounded-lg">
     <table class="min-w-full text-sm">
       <thead class="bg-slate-50 text-left">
         <tr>

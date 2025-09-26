@@ -19,7 +19,7 @@
   <div class="overflow-x-auto bg-white shadow rounded-lg">
     <table class="min-w-full text-sm">
       <thead>
-        <tr class="bg-slate-50 text-left">
+        <tr class="bg-slate-50 text-left text-slate-800">
           <th class="px-3 py-2">COD.INT.</th>
           <th class="px-3 py-2">Nro de parte</th>
           <th class="px-3 py-2">Item</th>

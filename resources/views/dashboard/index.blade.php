@@ -2,11 +2,11 @@
 
 @section('title','Dashboard')
 @section('content')
-  <h1 class="text-2xl font-bold mb-4">Lista de Inventario</h1>
+  <h1 class="text-2xl text-gray-900 font-bold mb-4">Lista de Inventario</h1>
 
   <div class="overflow-x-auto bg-orange-200 rounded-lg shadow">
     <table class="min-w-full text-sm text-left">
-      <thead class="bg-orange-300 text-gray-700 uppercase text-xs">
+      <thead class="bg-orange-300 text-gray-900 uppercase text-xs">
         <tr>
           <th class="px-4 py-2">Ubicación</th>
           <th class="px-4 py-2">COD.INT.</th>
@@ -19,7 +19,7 @@
           <th class="px-4 py-2">Observaciones</th>
         </tr>
       </thead>
-      <tbody class="divide-y">
+      <tbody class="divide-y text-gray-700">
         @foreach($products as $product)
           @foreach($product->stocks as $stock)
             <tr>

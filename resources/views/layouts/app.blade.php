@@ -6,7 +6,7 @@
   @vite(['resources/css/app.css','resources/js/app.js'])
   <title>@yield('title','Inventario')</title>
 </head>
-<body class="min-h-full bg-gray-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100">
+<body class="min-h-full bg-gray-50 text-slate-800 dark:bg-slate-100 dark:text-slate-100">
   @include('layouts.navigation')
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

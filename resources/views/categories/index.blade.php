@@ -8,7 +8,7 @@
     <a href="{{ route('categories.create') }}" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">Nueva categoría</a>
   </div>
 
-  <div class="overflow-x-auto bg-white shadow rounded-lg">
+  <div class="overflow-x-auto bg-white text-gray-900 shadow rounded-lg">
     <table class="min-w-full text-sm">
       <thead class="bg-slate-50 text-left">
         <tr>

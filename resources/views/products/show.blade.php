@@ -55,7 +55,6 @@
               <span class="text-xs text-gray-500">Ubicación: {{ $stock->location }}</span>
             @endif
           </div>
-        </li>
       @empty
         <li class="text-gray-500">Sin stock registrado.</li>
       @endforelse
