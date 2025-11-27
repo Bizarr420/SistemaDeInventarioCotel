@@ -3,9 +3,10 @@
 @section('title', 'Resumen de inventario')
 
 @section('content')
-  <h1 class="text-2xl font-semibold text-gray-800 mb-6">Resumen de inventario</h1>
+  <div class="text-slate-800 dark:text-slate-800">
+    <h1 class="text-2xl font-semibold text-gray-800 mb-6">Resumen de inventario</h1>
 
-  <div class="grid gap-4 sm:grid-cols-2 mb-8">
+    <div class="grid gap-4 sm:grid-cols-2 mb-8">
     <div class="bg-white rounded-lg shadow p-5">
       <p class="text-sm text-gray-500">Productos registrados</p>
       <p class="text-3xl font-semibold text-gray-900">{{ $totalProducts }}</p>
@@ -48,5 +49,6 @@
         @endforelse
       </tbody>
     </table>
+  </div>
   </div>
 @endsection

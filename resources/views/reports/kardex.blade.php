@@ -3,7 +3,8 @@
 @section('title', 'Kardex por producto')
 
 @section('content')
-  <h1 class="text-2xl font-semibold text-gray-800 mb-4">Kardex por producto</h1>
+  <div class="text-slate-800 dark:text-slate-800">
+    <h1 class="text-2xl font-semibold text-gray-800 mb-4">Kardex por producto</h1>
 
   <form method="get" action="{{ route('reports.kardex') }}" class="mb-6 flex flex-col sm:flex-row gap-3">
     <select name="product_id" class="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-orange-500 focus:ring-orange-500" required>
@@ -60,4 +61,5 @@
       </table>
     </div>
   @endif
+  </div>
 @endsection

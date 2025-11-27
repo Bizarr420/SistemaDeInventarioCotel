@@ -3,7 +3,8 @@
 @section('title', 'Movimientos de inventario')
 
 @section('content')
-  <h1 class="text-2xl font-semibold text-gray-800 mb-4">Movimientos de inventario</h1>
+  <div class="text-slate-800 dark:text-slate-800">
+    <h1 class="text-2xl font-semibold text-gray-800 mb-4">Movimientos de inventario</h1>
 
   <form method="post" action="{{ route('movements.store') }}" class="grid sm:grid-cols-5 gap-3 mb-6 bg-white p-4 rounded-lg shadow">
     @csrf
@@ -69,5 +70,6 @@
 
   <div class="mt-4">
     {{ $movements->links() }}
+  </div>
   </div>
 @endsection
