@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\Supplier;
 use App\Models\Warehouse;
+use App\Services\SpringService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -113,5 +114,35 @@ class ProductController extends Controller
         return redirect()
             ->route('products.index')
             ->with('ok', 'Producto eliminado correctamente.');
+    }
+
+    public function syncSpring(): RedirectResponse
+    {
+        $spring = new SpringService();
+        $assets = $spring->fetchAssets();
+
+        foreach ($assets as $asset) {
+            Product::updateOrCreate(
+                ['internal_code' => $asset['internal_code'] ?? null],
+                [
+                    'part_number' => $asset['part_number'] ?? null,
+                    'item' => $asset['item'] ?? null,
+                    'name_item' => $asset['name_item'] ?? ($asset['description'] ?? 'Sin nombre'),
+                    'description' => $asset['description'] ?? null,
+                    'category_id' => null,
+                    'supplier_id' => null,
+                    'end_of_support' => $asset['end_of_support'] ?? null,
+                    'compatibility_status' => $asset['compatibility_status'] ?? null,
+                    'operational_capacity' => $asset['operational_capacity'] ?? null,
+                    'useful_life_years' => $asset['useful_life_years'] ?? null,
+                    'acquisition_date' => $asset['acquisition_date'] ?? null,
+                    'acquisition_value' => $asset['acquisition_value'] ?? null,
+                    'current_accounting_value' => $asset['current_accounting_value'] ?? null,
+                    'technical_value' => $asset['technical_value'] ?? null,
+                ]
+            );
+        }
+
+        return redirect()->route('products.index')->with('ok', 'Sincronización con SPRING completada.');
     }
 }

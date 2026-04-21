@@ -1,90 +1,92 @@
 <nav x-data="{ open: false }"
-     class="sticky top-0 z-50 bg-white backdrop-blur supports-[backdrop-filter]:bg-white border-b border-gray-200">
+    class="app-nav sticky top-0 z-50 bg-white backdrop-blur supports-[backdrop-filter]:bg-white border-b border-gray-200"
+>
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
             <div class="flex items-center gap-x-8">
                 <!-- Logo -->
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2 font-bold text-lg">
-                    <img src="{{ asset('images/Cotel.png') }}" alt="COTEL" class="h-16 w-auto sm:h-14 md:h-16 lg:h-20">
-                    <span class="hidden sm:inline text-gray-800"></span>
+                    <img src="{{ asset('images/Cotel.png') }}" alt="Cotel" class="h-6 w-auto sm:h-7 md:h-8 lg:h-8">
                 </a>
 
                 <!-- Navigation Links -->
                 <div class="hidden sm:flex items-center gap-x-8">
-                    {{-- Dashboard --}}
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Inventario') }}
+                        {{ __('Inicio') }}
                     </x-nav-link>
 
-                    {{-- Productos (dropdown con subniveles) --}}
-                    <div x-data="{ openMenu:false }" class="relative">
+                    <div x-data="{ openInventory:false }" class="relative">
                         <button type="button"
-                                @click="openMenu = !openMenu"
-                                @keydown.escape="openMenu=false"
-                                @click.outside="openMenu=false"
-                                :aria-expanded="openMenu"
+                                @click="openInventory = !openInventory"
+                                @keydown.escape="openInventory=false"
+                                @click.outside="openInventory=false"
+                                :aria-expanded="openInventory"
                                 aria-haspopup="menu"
                                 class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 hover:text-cotel-orange focus:outline-none">
-                            Productos
+                            Inventario
                             <svg class="ml-1 h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.13l3.71-3.9a.75.75 0 111.08 1.05l-4.24 4.46a.75.75 0 01-1.1 0L5.21 8.26a.75.75 0 01.02-1.05z" clip-rule="evenodd"/>
                             </svg>
                         </button>
 
-                        <div x-cloak x-show="openMenu" x-transition
-                             class="absolute left-0 mt-2 w-56 rounded-xl border border-gray-200 bg-white shadow-lg py-2 z-50"
+                        <div x-cloak x-show="openInventory" x-transition
+                             class="absolute left-0 mt-2 w-64 rounded-xl border border-gray-200 bg-white shadow-lg py-2 z-50"
                              role="menu">
-                            <x-dropdown-link :href="route('products.index')" :active="request()->routeIs('products.index')">
-                                Listado
+                            <x-dropdown-link :href="route('inventory.index')" :active="request()->routeIs('inventory.index')">
+                                Productos
                             </x-dropdown-link>
-                            <x-dropdown-link :href="route('products.create')" :active="request()->routeIs('products.create')">
-                                Crear producto
+                            <x-dropdown-link :href="route('inventory.create')" :active="request()->routeIs('inventory.create')">
+                                Crear Producto
                             </x-dropdown-link>
-
-                            {{-- Subnivel Inventario --}}
-                            <div x-data="{ openSub:false }" class="relative">
-                                <button type="button"
-                                        @click="openSub = !openSub"
-                                        :aria-expanded="openSub"
-                                        class="w-full text-left px-4 py-2 text-sm text-gray-900 hover:text-cotel-orange hover:bg-orange-50 inline-flex items-center justify-between">
-                                    Inventario
-                                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.19 10 7.23 6.29a.75.75 0 111.06-1.06l4.46 4.24a.75.75 0 010 1.08l-4.46 4.24a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/>
-                                    </svg>
-                                </button>
-                                <div x-cloak x-show="openSub" x-transition
-                                     class="mt-1 ml-2 rounded-lg border border-gray-200 bg-white shadow">
-                                    <x-dropdown-link :href="route('movements.index')" :active="request()->routeIs('movements.index')">
-                                        Movimientos
-                                    </x-dropdown-link>
-                                </div>
-                            </div>
+                            <x-dropdown-link :href="route('movements.index')" :active="request()->routeIs('movements.index')">
+                                Salida y Devolucion de Stock
+                            </x-dropdown-link>
                         </div>
                     </div>
 
-                    {{-- Categorías --}}
-                    <x-nav-link :href="route('categories.index')" :active="request()->routeIs('categories.*')">
-                        Categorías
-                    </x-nav-link>
-
-                    {{-- Proveedores --}}
-                    <x-nav-link :href="route('suppliers.index')" :active="request()->routeIs('suppliers.*')">
-                        Proveedores
-                    </x-nav-link>
-
-                    {{-- Almacenes --}}
-                    <x-nav-link :href="route('warehouses.index')" :active="request()->routeIs('warehouses.*')">
-                        Almacenes
-                    </x-nav-link>
-
-                    {{-- Reportes (dropdown simple) --}}
-                    <div x-data="{ openRep:false }" class="relative">
+                    <div x-data="{ openAssets:false }" class="relative">
                         <button type="button"
-                                @click="openRep = !openRep"
-                                @keydown.escape="openRep=false"
-                                @click.outside="openRep=false"
-                                :aria-expanded="openRep"
+                                @click="openAssets = !openAssets"
+                                @keydown.escape="openAssets=false"
+                                @click.outside="openAssets=false"
+                                :aria-expanded="openAssets"
+                                aria-haspopup="menu"
+                                class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 hover:text-cotel-orange focus:outline-none">
+                            SICAT
+                            <svg class="ml-1 h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.13l3.71-3.9a.75.75 0 111.08 1.05l-4.24 4.46a.75.75 0 01-1.1 0L5.21 8.26a.75.75 0 01.02-1.05z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+
+                        <div x-cloak x-show="openAssets" x-transition
+                             class="absolute left-0 mt-2 w-64 rounded-xl border border-gray-200 bg-white shadow-lg py-2 z-50"
+                             role="menu">
+                            <x-dropdown-link :href="route('fixed-assets.index')" :active="request()->routeIs('fixed-assets.index')">
+                                Listado de Activos
+                            </x-dropdown-link>
+                            <x-dropdown-link :href="route('fixed-assets.create')" :active="request()->routeIs('fixed-assets.create')">
+                                Crear Activo Fijo
+                            </x-dropdown-link>
+                            <x-dropdown-link :href="route('fixed-assets.migration.create')" :active="request()->routeIs('fixed-assets.migration.*')">
+                                Migracion
+                            </x-dropdown-link>
+                            <x-dropdown-link :href="route('fixed-assets.verifications.index')" :active="request()->routeIs('fixed-assets.verifications.*')">
+                                Verificacion
+                            </x-dropdown-link>
+                        </div>
+                    </div>
+
+                    <x-nav-link :href="route('suppliers.index')" :active="request()->routeIs('suppliers.*')">
+                        {{ __('Proveedores') }}
+                    </x-nav-link>
+
+                    <div x-data="{ openReports:false }" class="relative">
+                        <button type="button"
+                                @click="openReports = !openReports"
+                                @keydown.escape="openReports=false"
+                                @click.outside="openReports=false"
+                                :aria-expanded="openReports"
                                 aria-haspopup="menu"
                                 class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 hover:text-cotel-orange focus:outline-none">
                             Reportes
@@ -92,7 +94,8 @@
                                 <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.13l3.71-3.9a.75.75 0 111.08 1.05l-4.24 4.46a.75.75 0 01-1.1 0L5.21 8.26a.75.75 0 01.02-1.05z" clip-rule="evenodd"/>
                             </svg>
                         </button>
-                        <div x-cloak x-show="openRep" x-transition
+
+                        <div x-cloak x-show="openReports" x-transition
                              class="absolute left-0 mt-2 w-56 rounded-xl border border-gray-200 bg-white shadow-lg py-2 z-50"
                              role="menu">
                             <x-dropdown-link :href="route('reports.summary')" :active="request()->routeIs('reports.summary')">
@@ -100,6 +103,12 @@
                             </x-dropdown-link>
                             <x-dropdown-link :href="route('reports.kardex')" :active="request()->routeIs('reports.kardex')">
                                 Kardex
+                            </x-dropdown-link>
+                            <x-dropdown-link :href="route('reports.deterioration')" :active="request()->routeIs('reports.deterioration')">
+                                Deterioro
+                            </x-dropdown-link>
+                            <x-dropdown-link :href="route('reports.comparative')" :active="request()->routeIs('reports.comparative')">
+                                Comparativo
                             </x-dropdown-link>
                         </div>
                     </div>
@@ -154,39 +163,44 @@
     <div id="mobile-menu" :class="{ 'block': open, 'hidden': !open }" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                {{ __('Dashboard') }}
+                {{ __('Inicio') }}
             </x-responsive-nav-link>
 
             <details class="group">
-                <summary class="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Productos</summary>
+                <summary class="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Inventario</summary>
                 <div class="pl-4">
-                    <x-responsive-nav-link :href="route('products.index')" :active="request()->routeIs('products.index')">
-                        Listado
+                    <x-responsive-nav-link :href="route('inventory.index')" :active="request()->routeIs('inventory.index')">
+                        Productos
                     </x-responsive-nav-link>
-                    <x-responsive-nav-link :href="route('products.create')" :active="request()->routeIs('products.create')">
-                        Crear producto
+                    <x-responsive-nav-link :href="route('inventory.create')" :active="request()->routeIs('inventory.create')">
+                        Crear Producto
                     </x-responsive-nav-link>
-                    <details class="group">
-                        <summary class="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Inventario</summary>
-                        <div class="pl-4">
-                            <x-responsive-nav-link :href="route('movements.index')" :active="request()->routeIs('movements.index')">
-                                Movimientos
-                            </x-responsive-nav-link>
-                        </div>
-                    </details>
+                    <x-responsive-nav-link :href="route('movements.index')" :active="request()->routeIs('movements.index')">
+                        Salida y Devolucion de Stock
+                    </x-responsive-nav-link>
                 </div>
             </details>
 
-            <x-responsive-nav-link :href="route('categories.index')" :active="request()->routeIs('categories.*')">
-                Categorías
-            </x-responsive-nav-link>
+            <details class="group">
+                <summary class="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">SICAT</summary>
+                <div class="pl-4">
+                    <x-responsive-nav-link :href="route('fixed-assets.index')" :active="request()->routeIs('fixed-assets.index')">
+                        Listado de Activos
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('fixed-assets.create')" :active="request()->routeIs('fixed-assets.create')">
+                        Crear Activo Fijo
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('fixed-assets.migration.create')" :active="request()->routeIs('fixed-assets.migration.*')">
+                        Migracion
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('fixed-assets.verifications.index')" :active="request()->routeIs('fixed-assets.verifications.*')">
+                        Verificacion
+                    </x-responsive-nav-link>
+                </div>
+            </details>
 
             <x-responsive-nav-link :href="route('suppliers.index')" :active="request()->routeIs('suppliers.*')">
-                Proveedores
-            </x-responsive-nav-link>
-
-            <x-responsive-nav-link :href="route('warehouses.index')" :active="request()->routeIs('warehouses.*')">
-                Almacenes
+                {{ __('Proveedores') }}
             </x-responsive-nav-link>
 
             <details class="group">
@@ -197,6 +211,12 @@
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('reports.kardex')" :active="request()->routeIs('reports.kardex')">
                         Kardex
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('reports.deterioration')" :active="request()->routeIs('reports.deterioration')">
+                        Deterioro
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('reports.comparative')" :active="request()->routeIs('reports.comparative')">
+                        Comparativo
                     </x-responsive-nav-link>
                 </div>
             </details>

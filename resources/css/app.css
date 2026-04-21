@@ -2,14 +2,181 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --cotel-orange-main: #F0821E;
+  --cotel-orange-variant: #F07814;
+  --cotel-orange-dark: #F0780A;
+  --cotel-orange-light: #F08228;
+  --cotel-black: #000000;
+  --cotel-white: #FAFAFA;
+  --cotel-yellow: #FAF000;
+  --cotel-beige: #F0C88C;
+}
+
 @layer base {
   body {
-    @apply bg-gray-50 text-slate-800;
+    @apply bg-gray-50;
+    color: var(--cotel-black);
   }
 
   @media (prefers-color-scheme: dark) {
     body {
-      @apply bg-slate-900 text-slate-100;
+      @apply bg-slate-900;
+      color: var(--cotel-white);
     }
+  }
+
+  h1, h2, h3, h4, h5, h6,
+  p, span, label, th, td, li, small {
+    color: inherit;
+  }
+
+  a {
+    color: var(--cotel-orange-dark);
+  }
+
+  a:hover {
+    color: var(--cotel-orange-main);
+  }
+
+  button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  a[class*="bg-"][class*="px-"][class*="py-"] {
+    color: var(--cotel-white) !important;
+    background-color: var(--cotel-orange-main) !important;
+    border-color: var(--cotel-orange-dark) !important;
+  }
+
+  button:hover,
+  input[type="button"]:hover,
+  input[type="submit"]:hover,
+  input[type="reset"]:hover,
+  a[class*="bg-"][class*="px-"][class*="py-"]:hover {
+    background-color: var(--cotel-orange-variant) !important;
+    color: var(--cotel-white) !important;
+  }
+
+  button:focus,
+  input[type="button"]:focus,
+  input[type="submit"]:focus,
+  input[type="reset"]:focus,
+  a[class*="bg-"][class*="px-"][class*="py-"]:focus {
+    outline: 2px solid var(--cotel-yellow) !important;
+    outline-offset: 1px;
+  }
+}
+
+@layer utilities {
+  .text-slate-100,
+  .text-slate-200,
+  .text-slate-300,
+  .text-gray-100,
+  .text-gray-200,
+  .text-gray-300 {
+    color: var(--cotel-white) !important;
+  }
+
+  .text-slate-400,
+  .text-slate-500,
+  .text-gray-400,
+  .text-gray-500 {
+    color: var(--cotel-orange-dark) !important;
+  }
+
+  .text-slate-600,
+  .text-slate-700,
+  .text-slate-800,
+  .text-gray-600,
+  .text-gray-700,
+  .text-gray-800,
+  .text-gray-900,
+  .text-black {
+    color: var(--cotel-black) !important;
+  }
+
+  .text-blue-500,
+  .text-blue-600,
+  .text-blue-700,
+  .text-green-500,
+  .text-green-600,
+  .text-green-700,
+  .text-red-500,
+  .text-red-600,
+  .text-red-700,
+  .text-amber-700,
+  .text-orange-600,
+  .text-orange-700,
+  .text-purple-500,
+  .text-purple-600 {
+    color: var(--cotel-orange-dark) !important;
+  }
+}
+
+@layer components {
+  .app-nav button {
+    background-color: transparent !important;
+    color: var(--cotel-black) !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .app-nav button:hover {
+    background-color: transparent !important;
+    color: var(--cotel-orange-main) !important;
+  }
+
+  .app-nav button:focus {
+    outline: none !important;
+  }
+
+  .app-nav a {
+    color: var(--cotel-black) !important;
+  }
+
+  .app-nav a:hover {
+    color: var(--cotel-orange-main) !important;
+  }
+
+  .app-nav .text-cotel-orange,
+  .app-nav .border-cotel-orange {
+    color: var(--cotel-orange-main) !important;
+    border-color: var(--cotel-orange-main) !important;
+  }
+
+  .asset-action-link {
+    display: inline-block;
+    color: var(--cotel-orange-dark) !important;
+    font-weight: 600;
+    border-bottom: 1px solid transparent;
+    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+
+  .asset-action-link:hover {
+    color: var(--cotel-orange-main) !important;
+    border-bottom-color: var(--cotel-orange-main);
+    background-color: rgba(240, 200, 140, 0.28);
+  }
+
+  .delete-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    background-color: #b91c1c !important;
+    border: 1px solid #991b1b !important;
+    color: #fafafa !important;
+    line-height: 1;
+  }
+
+  .delete-action-btn:hover {
+    background-color: #991b1b !important;
+    color: #fafafa !important;
   }
 }

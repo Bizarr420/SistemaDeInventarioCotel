@@ -18,7 +18,7 @@
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
             <div>
                 <a href="/">
-                    <img src="{{ asset('images/Cotel.png') }}" alt="COTEL" class="h-28 w-auto mx-auto">
+                    <img src="{{ asset('images/Cotel.png') }}" alt="Cotel" class="h-28 w-auto mx-auto">
                 </a>
             </div>
 

@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'spring' => [
+        'base_url' => env('SPRING_API_BASE_URL', 'http://localhost:8080/api'),
+        'api_key' => env('SPRING_API_KEY'),
+    ],
+
 ];

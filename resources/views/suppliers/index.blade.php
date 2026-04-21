@@ -31,7 +31,7 @@
               <form action="{{ route('suppliers.destroy', $supplier) }}" method="post" class="inline">
                 @csrf
                 @method('delete')
-                <button type="submit" class="text-red-600 hover:underline" onclick="return confirm('¿Eliminar este proveedor?')">Eliminar</button>
+                <button type="submit" class="delete-action-btn" onclick="return confirm('¿Eliminar este proveedor?')">Eliminar</button>
               </form>
             </td>
           </tr>

@@ -18,5 +18,20 @@ class BasicSeeder extends Seeder
         \App\Models\Warehouse::firstOrCreate(['code'=>'ALM-01'], ['name'=>'Almacén Central']);
         \App\Models\Warehouse::firstOrCreate(['code'=>'ALM-02'], ['name'=>'Almacén Secundario']);
 
+        // Criterios iniciales de obsolescencia
+        \App\Models\ObsoletenessCriterion::firstOrCreate(
+            ['name' => 'Fin de soporte cercano'],
+            ['type' => 'end_of_support_days', 'parameters' => ['days' => 60], 'is_active' => true]
+        );
+
+        \App\Models\ObsoletenessCriterion::firstOrCreate(
+            ['name' => 'Capacidad operativa baja'],
+            ['type' => 'operational_capacity_min', 'parameters' => ['min' => 60], 'is_active' => true]
+        );
+
+        \App\Models\ObsoletenessCriterion::firstOrCreate(
+            ['name' => 'Vida útil insuficiente'],
+            ['type' => 'useful_life_below', 'parameters' => ['limit' => 70], 'is_active' => true]
+        );
     }
 }

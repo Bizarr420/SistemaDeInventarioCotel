@@ -1,0 +1,3 @@
+nombre_activo,categoria,proveedor,sucursal,piso,oficina,encargado,departamento,cantidad,costo_unitario,sku,vida_util_anios,fecha_fin_vida_util,descripcion
+Laptop Lenovo T14,Tecnologia,Tech Supplier SRL,Central,3,Oficina 302,Juan Perez,Sistemas,5,1250.50,AF-LEN-001,5,2031-12-31,Laptop corporativa para analistas
+Impresora Laser HP,Categoria General,Proveedor Demo,Sucursal Norte,1,Recepcion,Maria Gomez,Administracion,2,480.00,,4,2030-06-30,Equipo de impresion para documentos internos

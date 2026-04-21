@@ -5,7 +5,13 @@
 @section('content')
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-semibold text-gray-800">Productos</h1>
-    <a href="{{ route('products.create') }}" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">Nuevo producto</a>
+    <div class="space-x-2">
+      <a href="{{ route('products.create') }}" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">Nuevo producto</a>
+      <form action="{{ route('products.syncSpring') }}" method="POST" class="inline">
+        @csrf
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Sincronizar SPRING</button>
+      </form>
+    </div>
   </div>
 
   <form method="get" action="{{ route('products.index') }}" class="mb-4 flex flex-col sm:flex-row gap-3">
@@ -24,7 +30,9 @@
           <th class="px-3 py-2">Nro de parte</th>
           <th class="px-3 py-2">Item</th>
           <th class="px-3 py-2">Nombre de Ítem</th>
-          <th class="px-3 py-2">Und</th>
+          <th class="px-3 py-2">Estado</th>
+          <th class="px-3 py-2">Vida útil (%)</th>
+          <th class="px-3 py-2">Deterioro (%)</th>
           <th class="px-3 py-2 text-center">Stock total</th>
           <th class="px-3 py-2">Por almacén</th>
           <th class="px-3 py-2"></th>
@@ -32,12 +40,17 @@
       </thead>
       <tbody>
         @forelse($products as $product)
-          <tr class="border-t text-gray-700">
+          <tr class="border-t text-gray-700 {{ $product->isObsolete() ? 'bg-red-50 border-red-200' : '' }}">
             <td class="px-3 py-2">{{ $product->internal_code }}</td>
             <td class="px-3 py-2">{{ $product->part_number }}</td>
             <td class="px-3 py-2">{{ $product->item }}</td>
             <td class="px-3 py-2 font-medium text-gray-800">{{ $product->name_item }}</td>
-            <td class="px-3 py-2">{{ $product->unit }}</td>
+            <td class="px-3 py-2">
+                <span class="px-2 py-1 rounded text-white text-xs {{ $product->isObsolete() ? 'bg-red-500' : 'bg-green-500' }}">
+                    {{ $product->isObsolete() ? 'Obsoleto' : 'Activo' }}
+                </span>
+            </td>
+            <td class="px-3 py-2">{{ number_format($product->calculateUsefulLife(), 0) }}%</td>            <td class="px-3 py-2">{{ number_format($product->calculateDeterioration(), 1) }}%</td>            <td class="px-3 py-2">{{ $product->unit }}</td>
             <td class="px-3 py-2 text-center font-semibold text-gray-900">{{ $product->total_stock }}</td>
             <td class="px-3 py-2">
               @forelse($product->stocks as $stock)
