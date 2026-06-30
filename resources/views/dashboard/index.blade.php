@@ -133,7 +133,10 @@
   <div class="mb-6">
     <a href="{{ route('alerts.index') }}" class="bg-red-500 text-white px-4 py-2 rounded mr-2">Alertas ({{ $unreadAlerts ?? 0 }} no leídas)</a>
     <a href="{{ route('dictamens.index') }}" class="bg-blue-500 text-white px-4 py-2 rounded mr-2">Dictámenes</a>
+    <a href="{{ route('accounting-adjustments.index') }}" class="bg-emerald-700 text-white px-4 py-2 rounded mr-2">Reconocimiento Contable</a>
+    <a href="{{ route('sicat.overview') }}" class="bg-slate-900 text-white px-4 py-2 rounded mr-2">Resumen SICAT</a>
     <a href="{{ route('reports.deterioration') }}" class="bg-green-500 text-white px-4 py-2 rounded mr-2">Reporte Deterioro</a>
     <a href="{{ route('reports.comparative') }}" class="bg-purple-500 text-white px-4 py-2 rounded">Reporte Comparativo</a>
+    <a href="{{ route('reports.financial-notes') }}" class="bg-slate-900 text-white px-4 py-2 rounded mr-2">Notas Financieras</a>
   </div>
 @endsection

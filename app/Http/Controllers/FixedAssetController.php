@@ -138,6 +138,28 @@ class FixedAssetController extends Controller
     }
 
     /**
+     * Mark a fixed asset as disposed with a final disposition.
+     */
+    public function dispose(Request $request, Product $fixed_asset)
+    {
+        $asset = $fixed_asset;
+
+        $validated = $request->validate([
+            'obsolete_disposition_status' => 'required|in:vendido,destruido',
+        ]);
+
+        $asset->update([
+            'asset_status' => 'obsoleto',
+            'obsolescence_status' => 'obsolete',
+            'obsolete_disposition_status' => $validated['obsolete_disposition_status'],
+        ]);
+
+        return redirect()
+            ->route('fixed-assets.edit', $asset)
+            ->with('success', 'El activo fue marcado como obsoleto y dado de baja con estado ' . $validated['obsolete_disposition_status'] . '.');
+    }
+
+    /**
      * Show migration upload and preview screen for fixed assets.
      */
     public function migrationCreate(Request $request)

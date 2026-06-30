@@ -2,13 +2,47 @@
 
 namespace App\Http\Controllers;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Alert;
+use App\Models\AccountingAdjustment;
+use App\Models\Dictamen;
 use App\Models\Product;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
     public function index(): View
+    {
+        $metrics = $this->buildSicatMetrics();
+
+        return view('dashboard.index', $metrics);
+    }
+
+    public function sicatOverview(): View
+    {
+        $metrics = $this->buildSicatMetrics();
+
+        return view('sicat.overview', $metrics);
+    }
+
+    public function sicatExecutive(): View
+    {
+        $metrics = $this->buildSicatMetrics();
+
+        return view('sicat.executive', $metrics);
+    }
+
+    public function exportSicatOverview(Request $request)
+    {
+        $metrics = $this->buildSicatMetrics();
+
+        $pdf = Pdf::loadView('sicat.overview_pdf', $metrics);
+
+        return $pdf->download('resumen_sicat_' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    private function buildSicatMetrics(): array
     {
         $productCount = Product::where('type', 'service')->count();
         $assets = Product::where('type', 'asset')->get();
@@ -73,7 +107,17 @@ class DashboardController extends Controller
         $obsoleteProducts = Product::all()->filter(fn($p) => $p->isObsolete())->count();
         $totalAlerts = Alert::count();
 
-        return view('dashboard.index', compact(
+        $totalDictamens = Dictamen::count();
+        $pendingDictamens = Dictamen::where('status', 'draft')->count();
+        $approvedDictamens = Dictamen::where('status', 'approved')->count();
+
+        $totalAdjustments = AccountingAdjustment::count();
+        $postedAdjustments = AccountingAdjustment::where('status', 'posted')->count();
+        $pendingAdjustments = AccountingAdjustment::where('status', 'pending')->count();
+        $deteriorationAdjustments = AccountingAdjustment::where('adjustment_type', 'deterioration')->count();
+        $disposalAdjustments = AccountingAdjustment::where('adjustment_type', 'disposal')->count();
+
+        return compact(
             'unreadAlerts',
             'totalProducts',
             'obsoleteProducts',
@@ -100,7 +144,15 @@ class DashboardController extends Controller
             'assetAvgDeterioration',
             'assetTechnicalTotal',
             'assetAccountingTotal',
-            'assetPatrimonialGap'
-        ));
+            'assetPatrimonialGap',
+            'totalDictamens',
+            'pendingDictamens',
+            'approvedDictamens',
+            'totalAdjustments',
+            'postedAdjustments',
+            'pendingAdjustments',
+            'deteriorationAdjustments',
+            'disposalAdjustments'
+        );
     }
 }

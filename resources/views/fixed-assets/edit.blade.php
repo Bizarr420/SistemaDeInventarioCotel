@@ -85,6 +85,31 @@
                                 </div>
                             </div>
 
+                            <div class="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
+                                <div>
+                                    <h3 class="text-sm font-semibold text-amber-900">Baja / Disposición final SICAT</h3>
+                                    <p class="text-xs text-amber-800">Este ajuste marca el activo como obsoleto y registra la decisión final para el reconocimiento contable.</p>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <form method="POST" action="{{ route('fixed-assets.dispose', $asset) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="obsolete_disposition_status" value="vendido">
+                                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 transition ease-in-out duration-150" onclick="return confirm('¿Confirmar baja con estado vendido?')">
+                                            {{ __('Dar de baja como vendido') }}
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ route('fixed-assets.dispose', $asset) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="obsolete_disposition_status" value="destruido">
+                                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 transition ease-in-out duration-150" onclick="return confirm('¿Confirmar baja con estado destruido?')">
+                                            {{ __('Dar de baja como destruido') }}
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
                             <div>
                                 <label for="quantity" class="block text-sm font-medium text-gray-700">{{ __('Cantidad') }}</label>
                                 <input type="number" name="quantity" id="quantity" value="{{ old('quantity', $asset->quantity) }}" min="1" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" />

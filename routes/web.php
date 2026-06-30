@@ -30,6 +30,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Fixed Assets Routes (Computers, equipment, etc.)
     Route::resource('fixed-assets', FixedAssetController::class);
+    Route::patch('fixed-assets/{fixed_asset}/dispose', [FixedAssetController::class, 'dispose'])->name('fixed-assets.dispose');
     Route::get('fixed-assets-migration', [FixedAssetController::class, 'migrationCreate'])->name('fixed-assets.migration.create');
     Route::post('fixed-assets-migration/preview', [FixedAssetController::class, 'migrationPreview'])->name('fixed-assets.migration.preview');
     Route::post('fixed-assets-migration/store', [FixedAssetController::class, 'migrationStore'])->name('fixed-assets.migration.store');
@@ -65,7 +66,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/reports/kardex', [ReportController::class, 'kardex'])->name('reports.kardex');
     Route::get('/reports/deterioration', [ReportController::class, 'deterioration'])->name('reports.deterioration');
     Route::get('/reports/comparative', [ReportController::class, 'comparative'])->name('reports.comparative');
+    Route::get('/reports/financial-notes', [ReportController::class, 'financialNotes'])->name('reports.financial-notes');
     Route::get('/reports/obsolescence/export', [ReportController::class, 'exportObsolescence'])->name('reports.obsolescence.export');
+    Route::get('/accounting-adjustments', [\App\Http\Controllers\AccountingAdjustmentController::class, 'index'])->name('accounting-adjustments.index');
+    Route::get('/accounting-adjustments/export', [\App\Http\Controllers\AccountingAdjustmentController::class, 'export'])->name('accounting-adjustments.export');
+    Route::get('/sicat/overview', [DashboardController::class, 'sicatOverview'])->name('sicat.overview');
+    Route::get('/sicat/overview/export', [DashboardController::class, 'exportSicatOverview'])->name('sicat.overview.export');
+    Route::get('/sicat/executive', [DashboardController::class, 'sicatExecutive'])->name('sicat.executive');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit_logs.index')->middleware('role:auditor,admin');
 

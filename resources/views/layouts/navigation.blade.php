@@ -110,6 +110,15 @@
                             <x-dropdown-link :href="route('reports.comparative')" :active="request()->routeIs('reports.comparative')">
                                 Comparativo
                             </x-dropdown-link>
+                            <x-dropdown-link :href="route('reports.financial-notes')" :active="request()->routeIs('reports.financial-notes')">
+                                Notas Financieras
+                            </x-dropdown-link>
+                            <x-dropdown-link :href="route('accounting-adjustments.index')" :active="request()->routeIs('accounting-adjustments.*')">
+                                Reconocimiento Contable
+                            </x-dropdown-link>
+                            <x-dropdown-link :href="route('sicat.overview')" :active="request()->routeIs('sicat.overview')">
+                                Resumen SICAT
+                            </x-dropdown-link>
                         </div>
                     </div>
                 </div>
@@ -217,6 +226,15 @@
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('reports.comparative')" :active="request()->routeIs('reports.comparative')">
                         Comparativo
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('reports.financial-notes')" :active="request()->routeIs('reports.financial-notes')">
+                        Notas Financieras
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('accounting-adjustments.index')" :active="request()->routeIs('accounting-adjustments.*')">
+                        Reconocimiento Contable
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('sicat.overview')" :active="request()->routeIs('sicat.overview')">
+                        Resumen SICAT
                     </x-responsive-nav-link>
                 </div>
             </details>
