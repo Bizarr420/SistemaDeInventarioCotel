@@ -34,6 +34,25 @@
 }
 
 @layer components {
+  .asset-table {
+    table-layout: auto;
+  }
+
+  .asset-table th,
+  .asset-table td {
+    vertical-align: top;
+  }
+
+  @media (max-width: 1279px) {
+    .asset-table-container:not(.has-custom-columns) .asset-column-secondary {
+      display: none;
+    }
+  }
+
+  .asset-table-container.has-custom-columns .asset-column-hidden {
+    display: none;
+  }
+
   .app-nav button {
     background-color: transparent !important;
     color: var(--cotel-black) !important;
@@ -68,6 +87,87 @@
     color: var(--cotel-orange-main) !important;
     border-bottom-color: var(--cotel-orange-main);
     background-color: rgba(240, 200, 140, 0.28);
+  }
+
+  .asset-name-link {
+    color: var(--cotel-orange-dark) !important;
+    font-weight: 700;
+  }
+
+  .asset-name-link:hover {
+    text-decoration: underline;
+  }
+
+  .asset-action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+
+  .asset-action-button-primary {
+    background-color: var(--cotel-orange-main);
+    border: 1px solid var(--cotel-orange-dark);
+    color: var(--cotel-white) !important;
+  }
+
+  .asset-action-button-primary:hover {
+    background-color: var(--cotel-orange-variant);
+  }
+
+  .asset-action-button-secondary {
+    background-color: #fff;
+    border: 1px solid #cbd5e1;
+    color: #334155 !important;
+  }
+
+  .asset-action-button-secondary:hover {
+    background-color: #f8fafc;
+    border-color: var(--cotel-orange-main);
+    color: var(--cotel-orange-dark) !important;
+  }
+
+  .asset-detail-card {
+    border-radius: 0.5rem;
+    background: #fff;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  }
+
+  .asset-detail-title {
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 0.65rem;
+    color: #1e293b;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .asset-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .asset-detail-grid dt {
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .asset-detail-grid dd {
+    margin-top: 0.25rem;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 500;
   }
 
   .delete-action-btn {

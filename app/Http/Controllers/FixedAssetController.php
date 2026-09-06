@@ -14,9 +14,10 @@ class FixedAssetController extends Controller
     /**
      * Display a listing of fixed assets (computers, equipment, etc.).
      */
-    public function index()
+    public function index(Request $request)
     {
-        $assets = FixedAsset::with(['category', 'supplier'])
+        $assets = Product::with(['category', 'supplier'])
+            ->where('type', 'asset') // or filter by category if needed
             ->paginate(15);
 
         return view('fixed-assets.index', compact('assets'));
