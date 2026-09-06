@@ -14,13 +14,175 @@ class FixedAssetController extends Controller
     /**
      * Display a listing of fixed assets (computers, equipment, etc.).
      */
-    public function index()
+    public function index(Request $request)
     {
-        $assets = Product::with(['category', 'supplier'])
-            ->where('type', 'asset') // or filter by category if needed
-            ->paginate(15);
+        $filters = $request->validate([
+            'search' => 'nullable|string|max:150',
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'supplier_id' => 'nullable|integer|exists:suppliers,id',
+            'branch' => 'nullable|string|max:120',
+            'location' => 'nullable|string|max:150',
+            'assignee' => 'nullable|string|max:150',
+            'asset_status' => 'nullable|in:operativo,falla,deteriorado,obsoleto',
+            'substatus' => 'nullable|in:pendiente,vendido,destruido',
+            'min_value' => 'nullable|numeric|min:0',
+            'max_value' => 'nullable|numeric|min:0|gte:min_value',
+            'min_age' => 'nullable|integer|min:0|max:100',
+            'max_age' => 'nullable|integer|min:0|max:100|gte:min_age',
+            'min_remaining_life' => 'nullable|integer|min:0|max:100',
+            'max_remaining_life' => 'nullable|integer|min:0|max:100|gte:min_remaining_life',
+            'verification_status' => 'nullable|in:verified,pending',
+            'sort' => 'nullable|in:name,value,age,acquisition_date,status,remaining_life',
+            'direction' => 'nullable|in:asc,desc',
+        ]);
 
-        return view('fixed-assets.index', compact('assets'));
+        $query = Product::with(['category', 'supplier', 'latestVerification'])
+            ->where('type', 'asset');
+
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($assetQuery) use ($search) {
+                $assetQuery->where('name_item', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('internal_code', 'like', "%{$search}%");
+            });
+        }
+
+        foreach (['category_id', 'supplier_id'] as $field) {
+            if (!empty($filters[$field])) {
+                $query->where($field, $filters[$field]);
+            }
+        }
+
+        if (!empty($filters['branch'])) {
+            $query->where('location_branch', 'like', '%' . $filters['branch'] . '%');
+        }
+
+        if (!empty($filters['location'])) {
+            $location = $filters['location'];
+            $query->where(function ($assetQuery) use ($location) {
+                $assetQuery->where('location_branch', 'like', "%{$location}%")
+                    ->orWhere('location_floor', 'like', "%{$location}%")
+                    ->orWhere('location_office', 'like', "%{$location}%");
+            });
+        }
+
+        if (!empty($filters['assignee'])) {
+            $assignee = $filters['assignee'];
+            $query->where(function ($assetQuery) use ($assignee) {
+                $assetQuery->where('assigned_to', 'like', "%{$assignee}%")
+                    ->orWhere('assigned_department', 'like', "%{$assignee}%");
+            });
+        }
+
+        if (!empty($filters['asset_status'])) {
+            $query->where('asset_status', $filters['asset_status']);
+        }
+
+        if (!empty($filters['substatus'])) {
+            $query->where('obsolete_disposition_status', $filters['substatus']);
+        }
+
+        foreach (['min_value' => '>=', 'max_value' => '<='] as $field => $operator) {
+            if (isset($filters[$field])) {
+                $query->where('unit_cost', $operator, $filters[$field]);
+            }
+        }
+
+        if (isset($filters['min_age'])) {
+            $query->whereDate('acquisition_date', '<=', now()->subYears($filters['min_age'])->toDateString());
+        }
+
+        if (isset($filters['max_age'])) {
+            $query->whereDate('acquisition_date', '>=', now()->subYears($filters['max_age'] + 1)->addDay()->toDateString());
+        }
+
+        $remainingLifeExpression = "GREATEST(0, LEAST(100, DATEDIFF(COALESCE(expected_useful_life, DATE_ADD(acquisition_date, INTERVAL useful_life_years YEAR)), CURDATE()) * 100 / NULLIF(DATEDIFF(COALESCE(expected_useful_life, DATE_ADD(acquisition_date, INTERVAL useful_life_years YEAR)), acquisition_date), 0)))";
+        if (isset($filters['min_remaining_life'])) {
+            $query->whereRaw("{$remainingLifeExpression} >= ?", [$filters['min_remaining_life']]);
+        }
+        if (isset($filters['max_remaining_life'])) {
+            $query->whereRaw("{$remainingLifeExpression} <= ?", [$filters['max_remaining_life']]);
+        }
+
+        if (($filters['verification_status'] ?? null) === 'verified') {
+            $query->whereHas('verifications');
+        } elseif (($filters['verification_status'] ?? null) === 'pending') {
+            $query->whereDoesntHave('verifications');
+        }
+
+        $sort = $filters['sort'] ?? 'name';
+        $direction = $filters['direction'] ?? 'asc';
+        $sortColumn = [
+            'name' => 'name_item',
+            'value' => 'unit_cost',
+            'age' => 'acquisition_date',
+            'acquisition_date' => 'acquisition_date',
+            'status' => 'asset_status',
+        ][$sort] ?? null;
+
+        if ($sortColumn) {
+            $query->orderBy($sortColumn, $direction);
+        } else {
+            $query->orderByRaw("{$remainingLifeExpression} {$direction}");
+        }
+
+        $assets = $query->paginate(15)->withQueryString();
+        $categories = Category::orderBy('name')->get();
+        $suppliers = Supplier::orderBy('name')->get();
+
+        return view('fixed-assets.index', compact('assets', 'categories', 'suppliers', 'filters'));
+    }
+
+    /**
+     * Display the specified fixed asset.
+     */
+    public function show(Product $fixed_asset)
+    {
+        $asset = $fixed_asset->load([
+            'category',
+            'supplier',
+            'warehouse',
+            'latestVerification.verifier',
+            'verifications.verifier',
+        ]);
+
+        abort_unless($asset->type === 'asset', 404);
+
+        $acquisitionValue = (float) ($asset->acquisition_value ?? (($asset->unit_cost ?? 0) * ($asset->quantity ?? 0)));
+        $accountingValue = (float) ($asset->current_accounting_value ?? 0);
+        $depreciationAccumulated = max(0, $acquisitionValue - $accountingValue);
+        $depreciatedPercentage = $acquisitionValue > 0
+            ? min(100, round(($depreciationAccumulated / $acquisitionValue) * 100, 2))
+            : 0;
+        $ageYears = $asset->acquisition_date ? $asset->acquisition_date->diffInYears(now()) : null;
+        $usefulLifeYears = (int) ($asset->useful_life_years ?? 0);
+        $remainingLifeYears = $usefulLifeYears > 0 && $ageYears !== null
+            ? max(0, $usefulLifeYears - $ageYears)
+            : null;
+        $consumedPercentage = $usefulLifeYears > 0 && $ageYears !== null
+            ? min(100, round(($ageYears / $usefulLifeYears) * 100, 2))
+            : null;
+        $estimatedValue = (float) ($asset->technical_value ?? $accountingValue);
+        $statusReason = is_array($asset->obsolescence_criteria)
+            ? collect($asset->obsolescence_criteria)
+                ->map(fn ($value, $key) => $key . ': ' . (is_scalar($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE)))
+                ->implode(', ')
+            : ($asset->obsolescence_criteria ?: $asset->note);
+
+        return view('fixed-assets.show', compact(
+            'asset',
+            'acquisitionValue',
+            'accountingValue',
+            'depreciationAccumulated',
+            'depreciatedPercentage',
+            'ageYears',
+            'usefulLifeYears',
+            'remainingLifeYears',
+            'consumedPercentage',
+            'estimatedValue',
+            'statusReason',
+        ));
     }
 
     /**
