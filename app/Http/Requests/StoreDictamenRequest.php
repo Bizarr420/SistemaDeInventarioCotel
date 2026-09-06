@@ -22,7 +22,7 @@ class StoreDictamenRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_id' => 'required|exists:products,id',
+            'fixed_asset_id' => 'required|exists:fixed_assets,id',
             'content' => 'required|string',
         ];
     }

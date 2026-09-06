@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AssetVerification;
-use App\Models\Product;
+use App\Models\FixedAsset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -22,7 +22,7 @@ class AssetVerificationController extends Controller
 
     public function create(Request $request): View
     {
-        $assets = Product::where('type', 'asset')->orderBy('name_item')->get();
+        $assets = FixedAsset::orderBy('name_item')->get();
         $selectedAssetId = $request->integer('asset_id');
 
         return view('fixed-assets.verifications.create', compact('assets', 'selectedAssetId'));
@@ -31,7 +31,7 @@ class AssetVerificationController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'product_id' => 'required|exists:products,id',
+            'fixed_asset_id' => 'required|exists:fixed_assets,id',
             'verified_at' => 'required|date',
             'status' => 'required|in:operativo,falla,deteriorado,obsoleto',
             'deterioration_level' => 'required|integer|min:0|max:100',
@@ -39,9 +39,7 @@ class AssetVerificationController extends Controller
             'next_verification_at' => 'nullable|date|after_or_equal:verified_at',
         ]);
 
-        $asset = Product::where('id', $validated['product_id'])
-            ->where('type', 'asset')
-            ->firstOrFail();
+        $asset = FixedAsset::findOrFail($validated['fixed_asset_id']);
 
         $validated['verified_by'] = auth()->id();
 

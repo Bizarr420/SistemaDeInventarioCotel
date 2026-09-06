@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
+use App\Models\FixedAsset;
 use App\Models\Category;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
@@ -16,8 +16,7 @@ class FixedAssetController extends Controller
      */
     public function index()
     {
-        $assets = Product::with(['category', 'supplier'])
-            ->where('type', 'asset') // or filter by category if needed
+        $assets = FixedAsset::with(['category', 'supplier'])
             ->paginate(15);
 
         return view('fixed-assets.index', compact('assets'));
@@ -52,7 +51,7 @@ class FixedAssetController extends Controller
             'assigned_department' => 'nullable|string|max:150',
             'quantity' => 'required|integer|min:0',
             'unit_cost' => 'required|numeric|min:0',
-            'sku' => 'nullable|string|unique:products,sku',
+            'sku' => 'nullable|string|unique:fixed_assets,sku',
             'useful_life_years' => 'nullable|integer|min:1',
             'expected_useful_life' => 'nullable|date',
         ]);
@@ -63,11 +62,10 @@ class FixedAssetController extends Controller
 
         $validated['name_item'] = $validated['name'];
         unset($validated['name']);
-        $validated['type'] = 'asset';
         $validated['asset_status'] = 'operativo';
         $validated['obsolete_disposition_status'] = null;
 
-        Product::create($validated);
+        FixedAsset::create($validated);
 
         return redirect()->route('fixed-assets.index')->with('success', 'Activo fijo creado exitosamente.');
     }
@@ -75,7 +73,7 @@ class FixedAssetController extends Controller
     /**
      * Show the form for editing the specified fixed asset.
      */
-    public function edit(Product $fixed_asset)
+    public function edit(FixedAsset $fixed_asset)
     {
         $asset = $fixed_asset;
         $categories = Category::all();
@@ -87,7 +85,7 @@ class FixedAssetController extends Controller
     /**
      * Update the specified fixed asset in storage.
      */
-    public function update(Request $request, Product $fixed_asset)
+    public function update(Request $request, FixedAsset $fixed_asset)
     {
         $asset = $fixed_asset;
         $validated = $request->validate([
@@ -104,7 +102,7 @@ class FixedAssetController extends Controller
             'assigned_department' => 'nullable|string|max:150',
             'quantity' => 'required|integer|min:0',
             'unit_cost' => 'required|numeric|min:0',
-            'sku' => 'nullable|string|unique:products,sku,' . $asset->id,
+            'sku' => 'nullable|string|unique:fixed_assets,sku,' . $asset->id,
             'useful_life_years' => 'nullable|integer|min:1',
             'expected_useful_life' => 'nullable|date',
         ]);
@@ -129,7 +127,7 @@ class FixedAssetController extends Controller
     /**
      * Remove the specified fixed asset from storage.
      */
-    public function destroy(Product $fixed_asset)
+    public function destroy(FixedAsset $fixed_asset)
     {
         $asset = $fixed_asset;
         $asset->delete();
@@ -140,7 +138,7 @@ class FixedAssetController extends Controller
     /**
      * Mark a fixed asset as disposed with a final disposition.
      */
-    public function dispose(Request $request, Product $fixed_asset)
+    public function dispose(Request $request, FixedAsset $fixed_asset)
     {
         $asset = $fixed_asset;
 
@@ -248,7 +246,7 @@ class FixedAssetController extends Controller
         DB::transaction(function () use ($validRows) {
             foreach ($validRows as $index => $row) {
                 $sku = trim((string) ($row['sku'] ?? ''));
-                if ($sku !== '' && Product::where('sku', $sku)->exists()) {
+                if ($sku !== '' && FixedAsset::where('sku', $sku)->exists()) {
                     $sku = '';
                 }
 
@@ -263,9 +261,8 @@ class FixedAssetController extends Controller
                     continue;
                 }
 
-                Product::create([
+                FixedAsset::create([
                     'name_item' => $row['name'],
-                    'type' => 'asset',
                     'asset_status' => 'operativo',
                     'description' => $row['description'],
                     'category_id' => $categoryId,

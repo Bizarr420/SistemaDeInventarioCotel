@@ -14,22 +14,90 @@
   <div class="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
     <div>
       <h2 class="text-xl text-gray-900 font-bold mb-4">Gestión de Productos</h2>
-      <div class="grid grid-cols-1 gap-4 mb-4">
+      <div class="grid grid-cols-2 gap-3 mb-4">
         <div class="bg-white p-4 rounded-lg shadow">
-          <h3 class="text-lg font-semibold text-gray-800">Total Productos</h3>
-          <p class="text-2xl font-bold text-blue-600">{{ $productCount }}</p>
+          <h3 class="text-sm font-semibold text-gray-800">Total de ítems</h3>
+          <p class="text-2xl font-bold text-blue-600">{{ $totalItems }}</p>
         </div>
         <div class="bg-white p-4 rounded-lg shadow">
-          <h3 class="text-lg font-semibold text-gray-800">Productos Obsoletos</h3>
-          <p class="text-2xl font-bold text-red-600">{{ $obsoleteProductCount }}</p>
+          <h3 class="text-sm font-semibold text-gray-800">Total de inventario</h3>
+          <p class="text-2xl font-bold text-slate-700">{{ number_format($stockTotalUnits) }}</p>
         </div>
         <div class="bg-white p-4 rounded-lg shadow">
-          <h3 class="text-lg font-semibold text-gray-800">Alertas Totales</h3>
-          <p class="text-2xl font-bold text-red-600">{{ $totalAlerts ?? 0 }}</p>
+          <h3 class="text-sm font-semibold text-gray-800">Valor total del inventario</h3>
+          <p class="text-2xl font-bold text-emerald-600">{{ number_format($productInventoryValue, 2) }}</p>
         </div>
         <div class="bg-white p-4 rounded-lg shadow">
-          <h3 class="text-lg font-semibold text-gray-800">Alertas No Leídas</h3>
-          <p class="text-2xl font-bold text-orange-600">{{ $unreadAlerts }}</p>
+          <h3 class="text-sm font-semibold text-gray-800">Cantidad de productos</h3>
+          <p class="text-2xl font-bold text-indigo-600">{{ $productCount }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Productos con stock</h3>
+          <p class="text-2xl font-bold text-green-600">{{ $productsWithStockCount }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Stock disponible</h3>
+          <p class="text-2xl font-bold text-green-600">{{ number_format($availableStockUnits) }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Equipos pendientes de liquidación</h3>
+          <p class="text-2xl font-bold text-amber-600">{{ number_format($pendingLiquidationUnits) }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">En uso</h3>
+          <p class="text-2xl font-bold text-blue-600">{{ number_format($inUseStockUnits) }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Reservado / asignado</h3>
+          <p class="text-2xl font-bold text-indigo-600">{{ number_format($reservedStockUnits) }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">En reparación</h3>
+          <p class="text-2xl font-bold text-orange-600">{{ number_format($repairStockUnits) }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Dañado</h3>
+          <p class="text-2xl font-bold text-red-600">{{ number_format($damagedStockUnits) }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Perdido</h3>
+          <p class="text-2xl font-bold text-gray-600">{{ number_format($lostStockUnits) }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Dado de baja</h3>
+          <p class="text-2xl font-bold text-gray-700">{{ number_format($disposedStockUnits) }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Transferencias en tránsito</h3>
+          <p class="text-2xl font-bold text-blue-600">{{ number_format($transfersInTransit) }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Productos agotados</h3>
+          <p class="text-2xl font-bold text-red-600">{{ $outOfStockProductCount }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Bajo stock mínimo</h3>
+          <p class="text-2xl font-bold text-amber-600">{{ $lowStockProductCount }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Sin movimiento</h3>
+          <p class="text-2xl font-bold text-gray-600">{{ $productsWithoutMovementCount }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Entradas del período</h3>
+          <p class="text-2xl font-bold text-cyan-600">{{ number_format($periodEntries) }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Salidas del período</h3>
+          <p class="text-2xl font-bold text-orange-600">{{ number_format($periodExits) }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Devoluciones</h3>
+          <p class="text-2xl font-bold text-teal-600">{{ number_format($periodReturns) }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="text-sm font-semibold text-gray-800">Transferencias entre almacenes</h3>
+          <p class="text-2xl font-bold text-violet-600">{{ $warehouseTransfers }}</p>
         </div>
       </div>
 

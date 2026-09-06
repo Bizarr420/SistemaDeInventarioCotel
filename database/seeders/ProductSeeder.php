@@ -5,6 +5,9 @@ namespace Database\Seeders;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Product;
+use App\Models\ProductStock;
+use App\Models\Supplier;
+use App\Models\Warehouse;
 use Illuminate\Support\Str;
 class ProductSeeder extends Seeder
 {
@@ -94,5 +97,32 @@ class ProductSeeder extends Seeder
             'end_of_support' => now()->addDays(360),
             'compatibility_status' => 'compatible',
         ]);
+
+        $suppliers = Supplier::query()->get();
+        $warehouses = Warehouse::query()->get();
+
+        if ($suppliers->isEmpty() || $warehouses->isEmpty()) {
+            throw new \RuntimeException('Se necesita al menos un proveedor y un almacén para poblar el inventario.');
+        }
+
+        Product::where('type', 'service')->get()->each(function (Product $product) use ($suppliers, $warehouses): void {
+            $warehouse = $warehouses->random();
+            $quantity = random_int(1, 100);
+
+            $product->update([
+                'supplier_id' => $suppliers->random()->id,
+                'warehouse_id' => $warehouse->id,
+                'quantity' => $quantity,
+                'unit_cost' => random_int(5000, 500000) / 100,
+            ]);
+
+            ProductStock::updateOrCreate(
+                [
+                    'product_id' => $product->id,
+                    'warehouse_id' => $warehouse->id,
+                ],
+                ['current_stock' => $quantity]
+            );
+        });
     }
 }

@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\FixedAsset;
 
 class AssetVerification extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'product_id',
+        'fixed_asset_id',
         'verified_by',
         'verified_at',
         'status',
@@ -27,7 +28,7 @@ class AssetVerification extends Model
 
     public function asset(): BelongsTo
     {
-        return $this->belongsTo(Product::class, 'product_id');
+        return $this->belongsTo(FixedAsset::class, 'fixed_asset_id');
     }
 
     public function verifier(): BelongsTo

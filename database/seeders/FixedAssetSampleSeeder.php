@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\AssetVerification;
 use App\Models\Category;
-use App\Models\Product;
+use App\Models\FixedAsset;
 use App\Models\Supplier;
 use App\Models\Warehouse;
 use Carbon\Carbon;
@@ -51,7 +51,7 @@ class FixedAssetSampleSeeder extends Seeder
 
         Warehouse::updateOrCreate(
             ['code' => 'AF-01'],
-            ['name' => 'Almacen Activos Fijos', 'location' => 'Edificio Central']
+            ['name' => 'Almacen Sur', 'location' => 'Edificio Central']
         );
 
         $assets = [];
@@ -79,7 +79,6 @@ class FixedAssetSampleSeeder extends Seeder
                 'description' => 'Computadora de escritorio adquirida en 2024.',
                 'note' => 'Activo fijo institucional',
                 'unit' => 'UND',
-                'type' => 'asset',
                 'useful_life_years' => 10,
                 'acquisition_date' => Carbon::create(2024, $month, $day)->toDateString(),
                 'acquisition_value' => 650.00,
@@ -110,7 +109,6 @@ class FixedAssetSampleSeeder extends Seeder
                 'description' => 'Impresora laser de red adquirida en 2024.',
                 'note' => 'Activo fijo institucional',
                 'unit' => 'UND',
-                'type' => 'asset',
                 'useful_life_years' => 5,
                 'acquisition_date' => Carbon::create(2024, 6, min(28, 8 + $i))->toDateString(),
                 'acquisition_value' => 320.00,
@@ -141,7 +139,6 @@ class FixedAssetSampleSeeder extends Seeder
                 'description' => 'Servidor de red para servicios internos.',
                 'note' => 'Activo fijo critico',
                 'unit' => 'UND',
-                'type' => 'asset',
                 'useful_life_years' => 8,
                 'acquisition_date' => Carbon::create(2024, 3, min(28, 10 + $i))->toDateString(),
                 'acquisition_value' => 2600.00,
@@ -172,7 +169,6 @@ class FixedAssetSampleSeeder extends Seeder
                 'description' => 'Switch de red capa 2.',
                 'note' => 'Activo de comunicaciones',
                 'unit' => 'UND',
-                'type' => 'asset',
                 'useful_life_years' => 4,
                 'acquisition_date' => Carbon::create(2024, 2, min(28, 12 + $i))->toDateString(),
                 'acquisition_value' => 540.00,
@@ -183,7 +179,7 @@ class FixedAssetSampleSeeder extends Seeder
         }
 
         foreach ($assets as $assetData) {
-            $product = Product::updateOrCreate(
+            $product = FixedAsset::updateOrCreate(
                 ['internal_code' => $assetData['internal_code']],
                 $assetData
             );
@@ -210,7 +206,7 @@ class FixedAssetSampleSeeder extends Seeder
 
             AssetVerification::updateOrCreate(
                 [
-                    'product_id' => $product->id,
+                    'fixed_asset_id' => $product->id,
                     'verified_at' => now()->toDateString(),
                 ],
                 [

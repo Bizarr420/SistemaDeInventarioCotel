@@ -7,10 +7,7 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            
-            <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- Total Products/Inventory -->
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <div class="flex items-center justify-between">
@@ -27,7 +24,6 @@
                     </div>
                 </div>
 
-                <!-- Total Fixed Assets -->
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <div class="flex items-center justify-between">
@@ -44,7 +40,6 @@
                     </div>
                 </div>
 
-                <!-- Total Suppliers -->
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <div class="flex items-center justify-between">
@@ -61,7 +56,6 @@
                     </div>
                 </div>
 
-                <!-- Recent Alerts -->
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <div class="flex items-center justify-between">
@@ -79,9 +73,58 @@
                 </div>
             </div>
 
-            <!-- Charts and Analytics Section -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <!-- Inventory by Category -->
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        @php
+                            $productTypeCounts = \App\Models\Product::selectRaw('type, COUNT(*) as total')
+                                ->groupBy('type')
+                                ->pluck('total', 'type')
+                                ->toArray();
+
+                            $productTypeChart = [
+                                ['label' => 'Inventario', 'count' => (int) ($productTypeCounts['service'] ?? 0), 'color' => '#3B82F6'],
+                                ['label' => 'Activos', 'count' => (int) ($productTypeCounts['asset'] ?? 0), 'color' => '#10B981'],
+                            ];
+
+                            $totalProductTypes = array_sum(array_column($productTypeChart, 'count'));
+                            $segments = [];
+                            $start = 0;
+
+                            foreach ($productTypeChart as $item) {
+                                $percentage = $totalProductTypes > 0 ? ($item['count'] / $totalProductTypes) * 100 : 0;
+                                $end = $start + $percentage;
+                                $segments[] = $item['color'] . ' ' . $start . '% ' . $end . '%';
+                                $start = $end;
+                            }
+                        @endphp
+
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('Productos por Tipo') }}</h3>
+
+                        <div class="flex flex-col sm:flex-row items-center gap-6">
+                            <div class="relative h-40 w-40 rounded-full" style="background: conic-gradient({{ implode(', ', $segments ?: ['#E5E7EB 0% 100%']) }});">
+                                <div class="absolute inset-5 rounded-full bg-white"></div>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                                    <span class="text-3xl font-bold text-gray-900">{{ $totalProductTypes }}</span>
+                                    <span class="text-xs text-gray-500 uppercase">Productos</span>
+                                </div>
+                            </div>
+
+                            <div class="w-full space-y-3">
+                                @foreach($productTypeChart as $item)
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="h-3 w-3 rounded-full" style="background-color: {{ $item['color'] }};"></span>
+                                            <span class="text-sm text-gray-700">{{ $item['label'] }}</span>
+                                        </div>
+                                        <span class="text-sm font-semibold text-gray-900">{{ $item['count'] }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('Inventario por Categoría') }}</h3>
@@ -110,7 +153,6 @@
                     </div>
                 </div>
 
-                <!-- Fixed Assets by Category -->
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('Activos Fijos por Categoría') }}</h3>
@@ -140,7 +182,6 @@
                 </div>
             </div>
 
-            <!-- Inventory by Warehouse -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('Distribución por Almacén') }}</h3>
@@ -164,7 +205,6 @@
                 </div>
             </div>
 
-            <!-- Recent Alerts -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
@@ -207,6 +247,9 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</x-app-layout>
 
         </div>
     </div>

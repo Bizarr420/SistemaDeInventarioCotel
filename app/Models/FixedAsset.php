@@ -7,21 +7,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Product extends Model
+class FixedAsset extends Model
 {
-    use HasFactory, SoftDeletes, Auditable;
+    use HasFactory, Auditable;
 
     protected $fillable = [
         'internal_code',
         'part_number',
         'item',
         'name_item',
-        'type',
-        'current_status',
-        'tracking_mode',
-        'asset_status',
         'cnd',
         'unit',
         'mac',
@@ -38,6 +33,7 @@ class Product extends Model
         'quantity',
         'unit_cost',
         'sku',
+        'asset_status',
         'end_of_support',
         'compatibility_status',
         'operational_capacity',
@@ -76,34 +72,9 @@ class Product extends Model
         return $this->belongsTo(Warehouse::class);
     }
 
-    public function stocks(): HasMany
-    {
-        return $this->hasMany(ProductStock::class);
-    }
-
-    public function movements(): HasMany
-    {
-        return $this->hasMany(Movement::class);
-    }
-
-    public function alerts(): HasMany
-    {
-        return $this->hasMany(Alert::class);
-    }
-
-    public function dictamens(): HasMany
-    {
-        return $this->hasMany(Dictamen::class);
-    }
-
     public function verifications(): HasMany
     {
-        return $this->hasMany(AssetVerification::class, 'product_id');
-    }
-
-    public function getTotalStockAttribute(): int
-    {
-        return (int) $this->stocks()->sum('current_stock');
+        return $this->hasMany(AssetVerification::class);
     }
 
     public function isObsolete(): bool

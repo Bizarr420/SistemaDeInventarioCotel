@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Movement;
+use App\Models\FixedAsset;
 use App\Models\Product;
 use App\Models\ProductStock;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -158,7 +159,7 @@ class ReportController extends Controller
 
     public function deterioration(): View
     {
-        $products = Product::where('type', 'asset')->get()->map(function ($product) {
+        $products = FixedAsset::all()->map(function ($product) {
             return [
                 'product' => $product,
                 'useful_life_percentage' => $product->calculateUsefulLife(),
@@ -172,7 +173,7 @@ class ReportController extends Controller
 
     public function comparative(): View
     {
-        $products = Product::where('type', 'asset')
+        $products = FixedAsset::query()
             ->whereNotNull('technical_value')
             ->whereNotNull('current_accounting_value')
             ->get();
@@ -182,7 +183,7 @@ class ReportController extends Controller
 
     public function exportObsolescence(Request $request)
     {
-        $products = Product::where('type', 'asset')->get()->map(function ($product) {
+        $products = FixedAsset::all()->map(function ($product) {
             return [
                 'id' => $product->id,
                 'name' => $product->name_item,

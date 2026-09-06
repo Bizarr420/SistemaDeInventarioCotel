@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreDictamenRequest;
 use App\Models\AccountingAdjustment;
 use App\Models\Dictamen;
-use App\Models\Product;
+use App\Models\FixedAsset;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
@@ -14,20 +14,20 @@ class DictamenController extends Controller
 {
     public function index(): View
     {
-        $dictamens = Dictamen::with(['product', 'user'])->orderByDesc('created_at')->paginate(20);
+        $dictamens = Dictamen::with(['asset', 'user'])->orderByDesc('created_at')->paginate(20);
 
         return view('dictamens.index', compact('dictamens'));
     }
 
-    public function create(Product $product): View
+    public function create(FixedAsset $fixedAsset): View
     {
-        return view('dictamens.create', compact('product'));
+        return view('dictamens.create', ['asset' => $fixedAsset]);
     }
 
     public function store(StoreDictamenRequest $request)
     {
         Dictamen::create([
-            'product_id' => $request->product_id,
+            'fixed_asset_id' => $request->fixed_asset_id,
             'user_id' => auth()->id(),
             'content' => $request->content,
         ]);
@@ -49,17 +49,17 @@ class DictamenController extends Controller
                 'approved_at' => now(),
             ]);
 
-            $product = $dictamen->product()->first();
-            $technicalValue = (float) ($product?->technical_value ?? 0);
-            $accountingValue = (float) ($product?->current_accounting_value ?? 0);
-            $adjustmentType = $this->determineAdjustmentType($product);
+            $asset = $dictamen->asset()->first();
+            $technicalValue = (float) ($asset?->technical_value ?? 0);
+            $accountingValue = (float) ($asset?->current_accounting_value ?? 0);
+            $adjustmentType = $this->determineAdjustmentType($asset);
             $recognizedAmount = $this->calculateRecognizedAmount($adjustmentType, $technicalValue, $accountingValue);
             $status = $recognizedAmount > 0 ? 'posted' : 'no_adjustment';
 
             AccountingAdjustment::updateOrCreate(
                 ['dictamen_id' => $dictamen->id],
                 [
-                    'product_id' => $dictamen->product_id,
+                    'fixed_asset_id' => $dictamen->fixed_asset_id,
                     'generated_by' => $dictamen->user_id,
                     'approved_by' => auth()->id(),
                     'adjustment_type' => $adjustmentType,
@@ -85,9 +85,9 @@ class DictamenController extends Controller
         return redirect()->back()->with('success', 'Dictamen aprobado.');
     }
 
-    private function determineAdjustmentType(?Product $product): string
+    private function determineAdjustmentType(?FixedAsset $asset): string
     {
-        if ($product && $product->asset_status === 'obsoleto' && in_array($product->obsolete_disposition_status, ['vendido', 'destruido'], true)) {
+        if ($asset && $asset->asset_status === 'obsoleto' && in_array($asset->obsolete_disposition_status, ['vendido', 'destruido'], true)) {
             return 'disposal';
         }
 

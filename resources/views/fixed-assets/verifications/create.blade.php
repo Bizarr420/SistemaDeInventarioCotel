@@ -14,11 +14,11 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label for="product_id" class="block text-sm font-medium text-gray-700">Activo Fijo</label>
-                                <select name="product_id" id="product_id" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500">
+                                <label for="fixed_asset_id" class="block text-sm font-medium text-gray-700">Activo Fijo</label>
+                                <select name="fixed_asset_id" id="fixed_asset_id" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500">
                                     <option value="">Seleccionar activo</option>
                                     @foreach($assets as $asset)
-                                        <option value="{{ $asset->id }}" {{ old('product_id', $selectedAssetId) == $asset->id ? 'selected' : '' }}>
+                                        <option value="{{ $asset->id }}" {{ old('fixed_asset_id', $selectedAssetId) == $asset->id ? 'selected' : '' }}>
                                             {{ $asset->name_item }}
                                         </option>
                                     @endforeach

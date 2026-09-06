@@ -14,9 +14,9 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label for="name" class="block text-sm font-medium text-gray-700">{{ __('Nombre del Producto') }}</label>
-                                <input type="text" name="name" id="name" value="{{ old('name') }}" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" />
-                                @error('name') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                <label for="name_item" class="block text-sm font-medium text-gray-700">{{ __('Nombre del Producto') }}</label>
+                                <input type="text" name="name_item" id="name_item" value="{{ old('name_item') }}" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                @error('name_item') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
@@ -62,6 +62,15 @@
                                 <label for="quantity" class="block text-sm font-medium text-gray-700">{{ __('Cantidad') }}</label>
                                 <input type="number" name="quantity" id="quantity" value="{{ old('quantity', 0) }}" min="0" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                                 @error('quantity') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label for="tracking_mode" class="block text-sm font-medium text-gray-700">{{ __('Control del inventario') }}</label>
+                                <select name="tracking_mode" id="tracking_mode" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <option value="quantity" @selected(old('tracking_mode', 'quantity') === 'quantity')>Por cantidad</option>
+                                    <option value="individual" @selected(old('tracking_mode') === 'individual')>Por equipo / serie</option>
+                                </select>
+                                @error('tracking_mode') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                             </div>
 
                             <div>

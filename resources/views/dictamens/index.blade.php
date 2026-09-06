@@ -14,7 +14,7 @@
                         <div class="border-b border-gray-200 dark:border-gray-700 p-4">
                             <div class="flex justify-between">
                                 <div>
-                                    <strong>{{ $dictamen->product->name_item }}</strong>
+                                    <strong>{{ $dictamen->asset->name_item }}</strong>
                                     <p>{{ Str::limit($dictamen->content, 100) }}</p>
                                     <small class="text-gray-500">Creado por {{ $dictamen->user->name }} el {{ $dictamen->created_at->format('d/m/Y') }}</small>
                                     <span class="ml-2 px-2 py-1 text-xs rounded {{ $dictamen->status === 'approved' ? 'bg-green-200' : 'bg-yellow-200' }}">{{ $dictamen->status }}</span>

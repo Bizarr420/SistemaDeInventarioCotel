@@ -12,7 +12,7 @@ class Dictamen extends Model
     use HasFactory, Auditable;
 
     protected $fillable = [
-        'product_id',
+        'fixed_asset_id',
         'user_id',
         'content',
         'status',
@@ -26,9 +26,9 @@ class Dictamen extends Model
         'traceability' => 'array',
     ];
 
-    public function product(): BelongsTo
+    public function asset(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(FixedAsset::class, 'fixed_asset_id');
     }
 
     public function user(): BelongsTo

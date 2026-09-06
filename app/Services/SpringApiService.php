@@ -26,15 +26,11 @@ class SpringApiService
             return $response->json();
         }
 
-        // Manejar errores
-        throw new \Exception('Error fetching data from SPRING: ' . $response->body());
+        throw new \RuntimeException('Error fetching data from SPRING: ' . $response->body());
     }
 
-    // Método específico para activos
     public function getAssets(): array
     {
         return $this->getMasterData('assets');
     }
-
-    // No modificar datos en SPRING, solo consultar
 }

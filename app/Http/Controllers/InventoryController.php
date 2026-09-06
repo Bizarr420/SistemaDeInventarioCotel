@@ -6,17 +6,18 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Warehouse;
 use App\Models\Supplier;
+use App\Models\ProductStock;
 use Illuminate\Http\Request;
 
 class InventoryController extends Controller
 {
     /**
-     * Display a listing of the inventory (services, routers, cables, etc.).
+    * Display a listing of inventory products only.
      */
     public function index()
     {
         $products = Product::with(['category', 'warehouse', 'supplier'])
-            ->where('type', 'service') // or filter by category if needed
+            ->where('type', 'service')
             ->paginate(15);
 
         return view('inventory.index', compact('products'));
@@ -40,7 +41,7 @@ class InventoryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name_item' => 'required|string|max:150',
             'description' => 'nullable|string',
             'category_id' => 'required|exists:categories,id',
             'warehouse_id' => 'required|exists:warehouses,id',
@@ -48,11 +49,17 @@ class InventoryController extends Controller
             'quantity' => 'required|integer|min:0',
             'unit_cost' => 'required|numeric|min:0',
             'sku' => 'nullable|string|unique:products,sku',
+            'tracking_mode' => 'required|in:quantity,individual',
         ]);
 
         $validated['type'] = 'service';
 
-        Product::create($validated);
+        $product = Product::create($validated + ['type' => 'service']);
+
+        ProductStock::updateOrCreate(
+            ['product_id' => $product->id, 'warehouse_id' => $validated['warehouse_id']],
+            ['current_stock' => $validated['quantity']]
+        );
 
         return redirect()->route('inventory.index')->with('success', 'Producto de inventario creado exitosamente.');
     }
@@ -60,8 +67,11 @@ class InventoryController extends Controller
     /**
      * Show the form for editing the specified inventory item.
      */
-    public function edit(Product $product)
+    public function edit(Product $inventory)
     {
+        $product = $inventory;
+        abort_unless($product->type === 'service', 404);
+
         $categories = Category::all();
         $warehouses = Warehouse::all();
         $suppliers = Supplier::all();
@@ -72,10 +82,13 @@ class InventoryController extends Controller
     /**
      * Update the specified inventory item in storage.
      */
-    public function update(Request $request, Product $product)
+    public function update(Request $request, Product $inventory)
     {
+        $product = $inventory;
+        abort_unless($product->type === 'service', 404);
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name_item' => 'required|string|max:150',
             'description' => 'nullable|string',
             'category_id' => 'required|exists:categories,id',
             'warehouse_id' => 'required|exists:warehouses,id',
@@ -83,9 +96,15 @@ class InventoryController extends Controller
             'quantity' => 'required|integer|min:0',
             'unit_cost' => 'required|numeric|min:0',
             'sku' => 'nullable|string|unique:products,sku,' . $product->id,
+            'tracking_mode' => 'required|in:quantity,individual',
         ]);
 
-        $product->update($validated);
+        $product->update($validated + ['type' => 'service']);
+
+        ProductStock::updateOrCreate(
+            ['product_id' => $product->id, 'warehouse_id' => $validated['warehouse_id']],
+            ['current_stock' => $validated['quantity']]
+        );
 
         return redirect()->route('inventory.index')->with('success', 'Producto de inventario actualizado exitosamente.');
     }
@@ -93,8 +112,11 @@ class InventoryController extends Controller
     /**
      * Remove the specified inventory item from storage.
      */
-    public function destroy(Product $product)
+    public function destroy(Product $inventory)
     {
+        $product = $inventory;
+        abort_unless($product->type === 'service', 404);
+
         $product->delete();
 
         return redirect()->route('inventory.index')->with('success', 'Producto de inventario eliminado exitosamente.');
