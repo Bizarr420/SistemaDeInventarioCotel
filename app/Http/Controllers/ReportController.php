@@ -6,6 +6,7 @@ use App\Models\Movement;
 use App\Models\FixedAsset;
 use App\Models\Product;
 use App\Models\ProductStock;
+use App\Models\InventoryBalanceSnapshot;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -15,20 +16,47 @@ class ReportController extends Controller
 {
     public function financialNotes(): View
     {
+        $inventorySnapshots = InventoryBalanceSnapshot::query()
+            ->whereIn('balance_year', [2023, 2024, 2025, 2026])
+            ->orderBy('account_code')
+            ->get()
+            ->groupBy('account_code');
+
+        $inventoryYears = [2024, 2023, 2025, 2026];
+        $inventoryRows = $inventorySnapshots->map(function ($snapshots): array {
+            $first = $snapshots->first();
+
+            return [
+                'code' => $first->account_code,
+                'detail' => $first->detail,
+                'values' => $snapshots->mapWithKeys(
+                    fn (InventoryBalanceSnapshot $snapshot): array => [
+                        (string) $snapshot->balance_year => (float) $snapshot->amount,
+                    ]
+                )->all(),
+                'estimated_years' => $snapshots
+                    ->where('is_estimated', true)
+                    ->pluck('balance_year')
+                    ->map(fn (int $year): string => (string) $year)
+                    ->all(),
+            ];
+        })->values()->all();
+
+        $inventoryTotals = [];
+        foreach ($inventoryYears as $year) {
+            $inventoryTotals[(string) $year] = array_sum(array_map(
+                fn (array $row): float => $row['values'][(string) $year] ?? 0.0,
+                $inventoryRows
+            ));
+        }
+
         $notes = [
             [
                 'code' => 'Nota 9',
                 'title' => 'Inventarios',
                 'description' => 'Composición del saldo de inventarios en almacenes.',
-                'totals' => ['2024' => 13545146.21, '2023' => 14456625.50],
-                'rows' => [
-                    ['code' => '17010101', 'detail' => 'Papelería y Útiles de Oficina', '2024' => 60333.61, '2023' => 71381.49],
-                    ['code' => '17010301', 'detail' => 'Materiales Repuestos y Suministros', '2024' => 7775750.06, '2023' => 8344775.86],
-                    ['code' => '17010401', 'detail' => 'Combustibles Lubricantes', '2024' => 200.20, '2023' => 208.51],
-                    ['code' => '17010501', 'detail' => 'Materiales de Seguridad (Equipo de Trabajo)', '2024' => 12568.08, '2023' => 13167.80],
-                    ['code' => '17020501', 'detail' => 'Otros inventarios', '2024' => 8008663.03, '2023' => 8435438.65],
-                    ['code' => '17030101', 'detail' => 'Provisión para obsolescencia inventarios', '2024' => -2312368.77, '2023' => -2408346.91],
-                ],
+                'totals' => $inventoryTotals,
+                'rows' => $inventoryRows,
             ],
             [
                 'code' => 'Nota 11',
@@ -121,6 +149,15 @@ class ReportController extends Controller
                 ],
             ],
         ];
+
+        $notes[0]['years'] = array_map('strval', $inventoryYears);
+        $notes[0]['estimated_years'] = ['2025', '2026'];
+
+        foreach ($notes as &$note) {
+            $note['years'] ??= ['2024', '2023'];
+            $note['estimated_years'] ??= [];
+        }
+        unset($note);
 
         return view('reports.financial-notes', compact('notes'));
     }

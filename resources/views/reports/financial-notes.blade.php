@@ -13,6 +13,7 @@
                         <div class="rounded-xl bg-slate-900 p-4 text-white">
                             <p class="text-sm text-slate-300">Fuente documental</p>
                             <p class="text-lg font-semibold">Estados financieros 2024 y 2023</p>
+                            <p class="mt-1 text-xs text-slate-400">Nota 9 incluye proyección estimada 2025–2026</p>
                         </div>
                         <div class="rounded-xl bg-amber-50 p-4 border border-amber-200">
                             <p class="text-sm text-amber-700">Relación con SICAT</p>
@@ -34,15 +35,15 @@
                                             <h3 class="text-xl font-semibold text-gray-900">{{ $note['title'] }}</h3>
                                             <p class="text-sm text-gray-600">{{ $note['description'] }}</p>
                                         </div>
-                                        <div class="flex gap-3 text-sm">
-                                            <div class="rounded-lg bg-white px-4 py-2 border border-gray-200">
-                                                <span class="block text-gray-500">2024</span>
-                                                <span class="font-semibold text-gray-900">{{ number_format($note['totals']['2024'], 2) }}</span>
-                                            </div>
-                                            <div class="rounded-lg bg-white px-4 py-2 border border-gray-200">
-                                                <span class="block text-gray-500">2023</span>
-                                                <span class="font-semibold text-gray-900">{{ number_format($note['totals']['2023'], 2) }}</span>
-                                            </div>
+                                        <div class="flex flex-wrap gap-3 text-sm">
+                                            @foreach($note['years'] as $year)
+                                                <div class="rounded-lg {{ in_array($year, $note['estimated_years'], true) ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-200' }} px-4 py-2 border">
+                                                    <span class="block {{ in_array($year, $note['estimated_years'], true) ? 'text-amber-700' : 'text-gray-500' }}">
+                                                        {{ $year }}{{ in_array($year, $note['estimated_years'], true) ? ' (est.)' : '' }}
+                                                    </span>
+                                                    <span class="font-semibold text-gray-900">{{ number_format($note['totals'][$year], 2) }}</span>
+                                                </div>
+                                            @endforeach
                                         </div>
                                     </div>
                                 </div>
@@ -52,8 +53,11 @@
                                             <tr>
                                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Código</th>
                                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Detalle</th>
-                                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">2024</th>
-                                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">2023</th>
+                                                @foreach($note['years'] as $year)
+                                                    <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider {{ in_array($year, $note['estimated_years'], true) ? 'text-amber-700' : 'text-gray-500' }}">
+                                                        {{ $year }}{{ in_array($year, $note['estimated_years'], true) ? ' (est.)' : '' }}
+                                                    </th>
+                                                @endforeach
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-100">
@@ -61,14 +65,17 @@
                                                 <tr class="hover:bg-slate-50/70">
                                                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-700">{{ $row['code'] }}</td>
                                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $row['detail'] }}</td>
-                                                    <td class="px-4 py-3 whitespace-nowrap text-right text-sm {{ $row['2024'] < 0 ? 'text-red-700' : 'text-gray-900' }}">{{ number_format($row['2024'], 2) }}</td>
-                                                    <td class="px-4 py-3 whitespace-nowrap text-right text-sm {{ $row['2023'] < 0 ? 'text-red-700' : 'text-gray-900' }}">{{ number_format($row['2023'], 2) }}</td>
+                                                    @foreach($note['years'] as $year)
+                                                        @php($amount = $row['values'][$year] ?? $row[$year] ?? 0)
+                                                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm {{ $amount < 0 ? 'text-red-700' : 'text-gray-900' }}">{{ number_format($amount, 2) }}</td>
+                                                    @endforeach
                                                 </tr>
                                             @endforeach
                                             <tr class="bg-gray-50 font-semibold">
                                                 <td class="px-4 py-3 text-sm text-gray-700" colspan="2">Total {{ $note['title'] }}</td>
-                                                <td class="px-4 py-3 text-right text-sm text-gray-900">{{ number_format($note['totals']['2024'], 2) }}</td>
-                                                <td class="px-4 py-3 text-right text-sm text-gray-900">{{ number_format($note['totals']['2023'], 2) }}</td>
+                                                @foreach($note['years'] as $year)
+                                                    <td class="px-4 py-3 text-right text-sm text-gray-900">{{ number_format($note['totals'][$year], 2) }}</td>
+                                                @endforeach
                                             </tr>
                                         </tbody>
                                     </table>

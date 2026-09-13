@@ -124,8 +124,12 @@
                             @endforeach
                         </fieldset>
                     </details>
+                    <div class="flex gap-2">
+                        <a href="{{ route('fixed-assets.export.excel', request()->query()) }}" class="rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700">{{ __('Exportar Excel') }}</a>
+                        <a href="{{ route('fixed-assets.export.pdf', request()->query()) }}" class="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700">{{ __('Exportar PDF') }}</a>
+                    </div>
                 </div>
-                <div class="overflow-x-auto">
+                <div class="asset-table-scroll overflow-x-auto">
                     <table class="asset-table w-full border-collapse">
                         <thead class="bg-gray-50 border-b border-gray-200">
                             <tr>
@@ -223,6 +227,10 @@
                 cell.classList.toggle('asset-column-hidden', !toggle.checked);
             });
         };
+
+        if (assetTableContainer && window.matchMedia('(max-width: 1279px)').matches) {
+            assetTableContainer.classList.add('has-custom-columns');
+        }
 
         assetColumnToggles.forEach((toggle) => {
             if (window.matchMedia('(max-width: 1279px)').matches) {

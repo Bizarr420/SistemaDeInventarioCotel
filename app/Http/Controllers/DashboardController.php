@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\StockTransfer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -103,7 +104,7 @@ class DashboardController extends Controller
         $transfersInTransit = StockTransfer::where('status', 'in_transit')->count();
         $warehouseTransfers = (int) Movement::where('type', 'transfer')->count();
 
-        $assets = FixedAsset::all();
+        $assets = FixedAsset::with(['verifications', 'category', 'supplier'])->get();
         $fixedAssetCount = $assets->count();
         $fixedAssetUnits = (int) $assets->sum('quantity');
         $obsoleteProductCount = Product::where('type', 'service')->get()->filter(fn($p) => $p->isObsolete())->count();
@@ -143,9 +144,11 @@ class DashboardController extends Controller
             ? round(($assetObsoleteCount * 100) / $fixedAssetCount, 2)
             : 0.0;
 
-        $assetTotalEstimatedValue = $assets->sum(function ($asset) {
-            return (float) ($asset->unit_cost ?? 0) * (int) ($asset->quantity ?? 0);
-        });
+        $assetTotalEstimatedValue = (float) $assets->sum(
+            fn ($asset) => (float) ($asset->technical_value
+                ?? $asset->acquisition_value
+                ?? (($asset->unit_cost ?? 0) * ($asset->quantity ?? 0)))
+        );
 
         $assetAvgUnitCost = $fixedAssetCount > 0
             ? round((float) $assets->avg('unit_cost'), 2)
@@ -158,6 +161,234 @@ class DashboardController extends Controller
         $assetTechnicalTotal = (float) $assets->sum('technical_value');
         $assetAccountingTotal = (float) $assets->sum('current_accounting_value');
         $assetPatrimonialGap = $assetTechnicalTotal - $assetAccountingTotal;
+        $assetAcquisitionTotal = (float) $assets->sum(fn ($asset) => (float) ($asset->acquisition_value ?? (($asset->unit_cost ?? 0) * ($asset->quantity ?? 0))));
+        $assetDepreciationTotal = max(0, $assetAcquisitionTotal - $assetAccountingTotal);
+        $assetDepreciationRate = $assetAcquisitionTotal > 0
+            ? round(($assetDepreciationTotal * 100) / $assetAcquisitionTotal, 2)
+            : 0.0;
+        $assetAverageDepreciationPercentage = $fixedAssetCount > 0
+            ? round((float) $assets->avg(function ($asset) {
+                $acquisitionValue = (float) ($asset->acquisition_value
+                    ?? (($asset->unit_cost ?? 0) * ($asset->quantity ?? 0)));
+                $accountingValue = (float) ($asset->current_accounting_value ?? 0);
+
+                return $acquisitionValue > 0
+                    ? min(100, max(0, (($acquisitionValue - $accountingValue) / $acquisitionValue) * 100))
+                    : 0;
+            }), 2)
+            : 0.0;
+        $assetDepreciationBuckets = [
+            'Nuevo' => 0,
+            'Parcialmente depreciado' => 0,
+            'Altamente depreciado' => 0,
+            'Totalmente depreciado' => 0,
+        ];
+        foreach ($assets as $asset) {
+            $acquisitionValue = (float) ($asset->acquisition_value
+                ?? (($asset->unit_cost ?? 0) * ($asset->quantity ?? 0)));
+            $accountingValue = (float) ($asset->current_accounting_value ?? 0);
+            $depreciationPercentage = $acquisitionValue > 0
+                ? min(100, max(0, (($acquisitionValue - $accountingValue) / $acquisitionValue) * 100))
+                : 0;
+
+            if ($depreciationPercentage <= 0) {
+                $assetDepreciationBuckets['Nuevo']++;
+            } elseif ($depreciationPercentage < 50) {
+                $assetDepreciationBuckets['Parcialmente depreciado']++;
+            } elseif ($depreciationPercentage < 100) {
+                $assetDepreciationBuckets['Altamente depreciado']++;
+            } else {
+                $assetDepreciationBuckets['Totalmente depreciado']++;
+            }
+        }
+        $assetDepreciationBucketMax = max(1, max($assetDepreciationBuckets));
+        $assetWithoutVerificationCount = $assets->filter(fn ($asset) => $asset->verifications->isEmpty())->count();
+        $assetVerifiedCount = $fixedAssetCount - $assetWithoutVerificationCount;
+        $assetVerificationRate = $fixedAssetCount > 0
+            ? round(($assetVerifiedCount * 100) / $fixedAssetCount, 2)
+            : 0.0;
+        $assetExpiringLifeCount = $assets->filter(function ($asset) {
+            if (!$asset->acquisition_date || !$asset->useful_life_years) {
+                return false;
+            }
+
+            return $asset->acquisition_date->addYears($asset->useful_life_years)->between(now(), now()->addYear());
+        })->count();
+        $assetBranchAnalysis = $assets
+            ->groupBy(fn ($asset) => $asset->location_branch ?: 'Sin sucursal')
+            ->map(function ($branchAssets, $branch) {
+                return [
+                    'name' => $branch,
+                    'count' => $branchAssets->count(),
+                    'value' => (float) $branchAssets->sum(
+                        fn ($asset) => (float) ($asset->technical_value
+                            ?? $asset->current_accounting_value
+                            ?? $asset->acquisition_value
+                            ?? (($asset->unit_cost ?? 0) * ($asset->quantity ?? 0)))
+                    ),
+                ];
+            })
+            ->sortByDesc('count')
+            ->values();
+        $assetBranchMaxCount = max(1, (int) $assetBranchAnalysis->max('count'));
+        $assetBranchMaxValue = max(1, (float) $assetBranchAnalysis->max('value'));
+        $assetDepartmentAnalysis = $assets
+            ->groupBy(fn ($asset) => $asset->assigned_department ?: ($asset->assigned_to ?: 'Sin departamento'))
+            ->map(function ($departmentAssets, $department) {
+                return [
+                    'name' => $department,
+                    'count' => $departmentAssets->count(),
+                    'value' => (float) $departmentAssets->sum(
+                        fn ($asset) => (float) ($asset->technical_value
+                            ?? $asset->current_accounting_value
+                            ?? $asset->acquisition_value
+                            ?? (($asset->unit_cost ?? 0) * ($asset->quantity ?? 0)))
+                    ),
+                    'failures' => $departmentAssets->where('asset_status', 'falla')->count(),
+                    'obsolete' => $departmentAssets->where('asset_status', 'obsoleto')->count(),
+                ];
+            })
+            ->sortByDesc('count')
+            ->values();
+        $assetDepartmentMaxCount = max(1, (int) $assetDepartmentAnalysis->max('count'));
+        $assetDepartmentMaxValue = max(1, (float) $assetDepartmentAnalysis->max('value'));
+        $assetDepartmentMaxFailures = max(1, (int) $assetDepartmentAnalysis->max('failures'));
+        $assetDepartmentMaxObsolete = max(1, (int) $assetDepartmentAnalysis->max('obsolete'));
+        $assetSupplierAnalysis = $assets
+            ->groupBy(fn ($asset) => $asset->supplier?->name ?? 'Sin proveedor')
+            ->map(function ($supplierAssets, $supplier) {
+                $supplierModel = $supplierAssets->first()->supplier;
+                return [
+                    'id' => $supplierModel?->id,
+                    'name' => $supplier,
+                    'count' => $supplierAssets->count(),
+                    'value' => (float) $supplierAssets->sum(
+                        fn ($asset) => (float) ($asset->acquisition_value
+                            ?? (($asset->unit_cost ?? 0) * ($asset->quantity ?? 0)))
+                    ),
+                    'failures' => $supplierAssets->where('asset_status', 'falla')->count(),
+                    'obsolete' => $supplierAssets->where('asset_status', 'obsoleto')->count(),
+                ];
+            })
+            ->sortByDesc('count')
+            ->values();
+        $assetSupplierMaxCount = max(1, (int) $assetSupplierAnalysis->max('count'));
+        $assetSupplierMaxValue = max(1, (float) $assetSupplierAnalysis->max('value'));
+        $assetSupplierMaxFailures = max(1, (int) $assetSupplierAnalysis->max('failures'));
+        $assetSupplierMaxObsolete = max(1, (int) $assetSupplierAnalysis->max('obsolete'));
+        $ageBuckets = [
+            '0-2 años' => 0,
+            '3-5 años' => 0,
+            '6-8 años' => 0,
+            '9-10 años' => 0,
+            'Más de 10 años' => 0,
+            'Sin fecha de adquisición' => 0,
+        ];
+        $assetLifeAnalysis = $assets->map(function ($asset) {
+            $totalYears = (int) ($asset->useful_life_years ?? 0);
+            $ageYears = $asset->acquisition_date
+                ? (float) $asset->acquisition_date->diffInDays(now()) / 365.25
+                : null;
+            $endOfLife = $asset->expected_useful_life
+                ? Carbon::parse($asset->expected_useful_life)
+                : ($asset->acquisition_date && $totalYears > 0
+                    ? $asset->acquisition_date->copy()->addYears($totalYears)
+                    : null);
+            if ($totalYears === 0 && $asset->acquisition_date && $endOfLife) {
+                $totalYears = max(1, (int) round($asset->acquisition_date->diffInDays($endOfLife) / 365.25));
+            }
+            $remainingYears = $endOfLife
+                ? max(0, (float) now()->diffInDays($endOfLife, false) / 365.25)
+                : ($totalYears > 0 && $ageYears !== null ? max(0, $totalYears - $ageYears) : null);
+            $consumedPercentage = $totalYears > 0 && $ageYears !== null
+                ? min(100, max(0, ($ageYears / $totalYears) * 100))
+                : null;
+
+            return [
+                'name' => $asset->name_item,
+                'total_years' => $totalYears,
+                'age_years' => $ageYears,
+                'remaining_years' => $remainingYears,
+                'consumed_percentage' => $consumedPercentage,
+            ];
+        });
+        foreach ($assetLifeAnalysis as $life) {
+            if ($life['age_years'] === null) {
+                $ageBuckets['Sin fecha de adquisición']++;
+            } elseif ($life['age_years'] <= 2) {
+                $ageBuckets['0-2 años']++;
+            } elseif ($life['age_years'] <= 5) {
+                $ageBuckets['3-5 años']++;
+            } elseif ($life['age_years'] <= 8) {
+                $ageBuckets['6-8 años']++;
+            } elseif ($life['age_years'] <= 10) {
+                $ageBuckets['9-10 años']++;
+            } else {
+                $ageBuckets['Más de 10 años']++;
+            }
+        }
+        $assetNearEndOfLife = $assetLifeAnalysis
+            ->filter(fn ($life) => $life['remaining_years'] !== null && $life['remaining_years'] < 2)
+            ->sortBy('remaining_years')
+            ->values();
+        $assetAgeMaxCount = max(1, max($ageBuckets));
+        $latestAssetVerifications = $assets->mapWithKeys(function ($asset) {
+            return [$asset->id => $asset->verifications->sortByDesc('verified_at')->first()];
+        });
+        $assetVerificationPendingCount = $assets->filter(
+            fn ($asset) => !$latestAssetVerifications->get($asset->id)
+        )->count();
+        $assetVerificationTotalCount = $fixedAssetCount - $assetVerificationPendingCount;
+        $assetVerificationDifferenceCount = $assets->filter(function ($asset) use ($latestAssetVerifications) {
+            $verification = $latestAssetVerifications->get($asset->id);
+
+            return $verification
+                && (strtolower((string) $verification->status) !== 'operativo'
+                    || (float) ($verification->deterioration_level ?? 0) > 0);
+        })->count();
+        $assetVerificationVerifiedCount = max(
+            0,
+            $fixedAssetCount - $assetVerificationPendingCount - $assetVerificationDifferenceCount
+        );
+        $lastAssetVerification = $assets
+            ->flatMap(fn ($asset) => $asset->verifications)
+            ->sortByDesc('verified_at')
+            ->first();
+        $assetAlertCounts = [
+            'failures' => $assetFailureCount,
+            'high_deterioration' => $assetHighDeteriorationCount,
+            'near_end_of_life' => $assetNearEndOfLife->count(),
+            'pending_verification' => $assetVerificationPendingCount,
+            'obsolete' => $assetObsoleteCount,
+            'verification_differences' => $assetVerificationDifferenceCount,
+        ];
+        $assetLatestVerifications = $assets->flatMap(fn ($asset) => $asset->verifications->map(fn ($verification) => [
+            'asset' => $asset->name_item,
+            'date' => $verification->verified_at,
+            'status' => $verification->status,
+        ]))->sortByDesc('date')->take(5);
+        $assetCategoryAnalysis = $assets
+            ->groupBy('category_id')
+            ->map(function ($categoryAssets, $categoryId) {
+                $category = $categoryAssets->first()->category;
+                $patrimonialValue = (float) $categoryAssets->sum(
+                    fn ($asset) => (float) ($asset->technical_value
+                        ?? $asset->current_accounting_value
+                        ?? $asset->acquisition_value
+                        ?? (($asset->unit_cost ?? 0) * ($asset->quantity ?? 0)))
+                );
+
+                return [
+                    'id' => $categoryId,
+                    'name' => $category?->name ?? 'Sin categoría',
+                    'count' => $categoryAssets->count(),
+                    'value' => $patrimonialValue,
+                ];
+            })
+            ->sortByDesc('count')
+            ->values();
+        $assetCategoryMaxCount = max(1, (int) $assetCategoryAnalysis->max('count'));
+        $assetCategoryMaxValue = max(1, (float) $assetCategoryAnalysis->max('value'));
 
         $unreadAlerts = Alert::where('is_read', false)->count();
         $totalProducts = Product::count();
@@ -222,6 +453,43 @@ class DashboardController extends Controller
             'assetTechnicalTotal',
             'assetAccountingTotal',
             'assetPatrimonialGap',
+            'assetAcquisitionTotal',
+            'assetDepreciationTotal',
+            'assetDepreciationRate',
+            'assetAverageDepreciationPercentage',
+            'assetDepreciationBuckets',
+            'assetDepreciationBucketMax',
+            'assetWithoutVerificationCount',
+            'assetVerifiedCount',
+            'assetVerificationRate',
+            'assetExpiringLifeCount',
+            'assetBranchAnalysis',
+            'assetBranchMaxCount',
+            'assetBranchMaxValue',
+            'assetDepartmentAnalysis',
+            'assetDepartmentMaxCount',
+            'assetDepartmentMaxValue',
+            'assetDepartmentMaxFailures',
+            'assetDepartmentMaxObsolete',
+            'assetSupplierAnalysis',
+            'assetSupplierMaxCount',
+            'assetSupplierMaxValue',
+            'assetSupplierMaxFailures',
+            'assetSupplierMaxObsolete',
+            'ageBuckets',
+            'assetAgeMaxCount',
+            'assetLifeAnalysis',
+            'assetNearEndOfLife',
+            'assetVerificationPendingCount',
+            'assetVerificationTotalCount',
+            'assetVerificationDifferenceCount',
+            'assetVerificationVerifiedCount',
+            'lastAssetVerification',
+            'assetAlertCounts',
+            'assetLatestVerifications',
+            'assetCategoryAnalysis',
+            'assetCategoryMaxCount',
+            'assetCategoryMaxValue',
             'totalDictamens',
             'pendingDictamens',
             'approvedDictamens',

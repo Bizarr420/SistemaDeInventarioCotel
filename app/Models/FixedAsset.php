@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class FixedAsset extends Model
 {
@@ -75,6 +76,11 @@ class FixedAsset extends Model
     public function verifications(): HasMany
     {
         return $this->hasMany(AssetVerification::class);
+    }
+
+    public function latestVerification(): HasOne
+    {
+        return $this->hasOne(AssetVerification::class)->latestOfMany('verified_at');
     }
 
     public function isObsolete(): bool

@@ -43,6 +43,10 @@
     vertical-align: top;
   }
 
+  .asset-table th {
+    white-space: nowrap;
+  }
+
   @media (max-width: 1279px) {
     .asset-table-container:not(.has-custom-columns) .asset-column-secondary {
       display: none;
@@ -51,6 +55,22 @@
 
   .asset-table-container.has-custom-columns .asset-column-hidden {
     display: none;
+  }
+
+  @media (max-width: 1279px) {
+    .asset-table-scroll {
+      overflow-x: visible;
+    }
+
+    .asset-table th,
+    .asset-table td {
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
+
+    .asset-table td {
+      white-space: normal !important;
+    }
   }
 
   .app-nav button {

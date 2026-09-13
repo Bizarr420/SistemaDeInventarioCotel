@@ -29,6 +29,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('inventory', InventoryController::class);
 
     Route::resource('fixed-assets', FixedAssetController::class);
+    Route::get('fixed-assets-export/excel', [FixedAssetController::class, 'exportExcel'])->name('fixed-assets.export.excel');
+    Route::get('fixed-assets-export/pdf', [FixedAssetController::class, 'exportPdf'])->name('fixed-assets.export.pdf');
     Route::patch('fixed-assets/{fixed_asset}/dispose', [FixedAssetController::class, 'dispose'])->name('fixed-assets.dispose');
     Route::get('fixed-assets-migration', [FixedAssetController::class, 'migrationCreate'])->name('fixed-assets.migration.create');
     Route::post('fixed-assets-migration/preview', [FixedAssetController::class, 'migrationPreview'])->name('fixed-assets.migration.preview');
