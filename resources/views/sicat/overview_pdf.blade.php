@@ -23,7 +23,7 @@
         <div class="row"><span>Activos fijos</span><strong>{{ $fixedAssetCount }}</strong></div>
         <div class="row"><span>Obsoletos</span><strong>{{ $assetObsoleteCount }}</strong></div>
         <div class="row"><span>Dictámenes aprobados</span><strong>{{ $approvedDictamens }}</strong></div>
-        <div class="row"><span>Reconocimientos registrados</span><strong>{{ $postedAdjustments }}</strong></div>
+        <div class="row"><span>Ajustes SICAT registrados</span><strong>{{ $postedAdjustments }}</strong></div>
     </div>
 
     <div class="section">
@@ -32,7 +32,7 @@
             <div class="row"><span>Obsolescencia detectada</span><strong>{{ $assetObsoleteCount }}</strong></div>
             <div class="row"><span>Dictámenes técnicos</span><strong>{{ $totalDictamens }}</strong></div>
             <div class="row"><span>Pendientes de dictamen</span><strong>{{ $pendingDictamens }}</strong></div>
-            <div class="row"><span>Reconocimientos contables</span><strong>{{ $totalAdjustments }}</strong></div>
+            <div class="row"><span>Ajustes SICAT</span><strong>{{ $totalAdjustments }}</strong></div>
             <div class="row"><span>Disposiciones finales</span><strong>{{ $disposalAdjustments }}</strong></div>
         </div>
     </div>
@@ -41,15 +41,19 @@
         <div class="section-title">Trazabilidad patrimonial</div>
         <div class="card">
             <div class="row"><span>Valor técnico total</span><strong>{{ number_format($assetTechnicalTotal, 2) }}</strong></div>
-            <div class="row"><span>Valor contable total</span><strong>{{ number_format($assetAccountingTotal, 2) }}</strong></div>
-            <div class="row"><span>Brecha patrimonial</span><strong>{{ number_format($assetPatrimonialGap, 2) }}</strong></div>
+            <div class="row"><span>Valor bruto simulado al corte</span><strong>{{ number_format($assetAcquisitionTotal, 2) }}</strong></div>
+            <div class="row"><span>Depreciación acumulada simulada</span><strong>{{ number_format($assetDepreciationTotal, 2) }}</strong></div>
+            <div class="row"><span>Valor neto del escenario</span><strong>{{ number_format($assetAccountingTotal, 2) }}</strong></div>
+            <div class="row"><span>Diferencia técnica frente al neto simulado</span><strong>{{ number_format($assetPatrimonialGap, 2) }}</strong></div>
             <div class="row"><span>Deterioros registrados</span><strong>{{ $deteriorationAdjustments }}</strong></div>
-            <div class="row"><span>Reconocidos pendientes</span><strong>{{ $pendingAdjustments }}</strong></div>
+            <div class="row"><span>Ajustes SICAT pendientes</span><strong>{{ $pendingAdjustments }}</strong></div>
         </div>
     </div>
 
     <div class="section muted">
-        Fuente: SICAT y estados financieros 2024-2023 de COTEL La Paz R.L.
+        Escenario SICAT simulado al {{ \Illuminate\Support\Carbon::parse($assetLedgerSummary['cutoff_date'])->format('d/m/Y') }}.
+        Los valores de ficha y las depreciaciones simuladas no constituyen saldos del mayor contable.
+        Los ajustes SICAT tampoco son asientos: la base no almacena cuentas contables ni débitos y créditos.
     </div>
 </body>
 </html>

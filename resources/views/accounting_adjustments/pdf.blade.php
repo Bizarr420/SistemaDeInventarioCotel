@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Reconocimientos Contables SICAT</title>
+    <title>Ajustes Patrimoniales SICAT</title>
     <style>
         body { font-family: Arial, sans-serif; font-size: 12px; }
         h1, h2 { margin: 0; }
@@ -15,8 +15,9 @@
     </style>
 </head>
 <body>
-    <h1>Reconocimientos Contables SICAT</h1>
+    <h1>Ajustes Patrimoniales SICAT</h1>
     <div class="meta">Generado el {{ now()->format('d/m/Y H:i') }}</div>
+    <div class="meta">Registro interno SICAT; no constituye un asiento del mayor contable porque no incluye cuentas, débitos ni créditos.</div>
     <table>
         <thead>
             <tr>
@@ -35,8 +36,8 @@
                 <tr>
                     <td>{{ optional($adjustment->posted_at)->format('d/m/Y H:i') ?? '-' }}</td>
                     <td>
-                        <strong>{{ $adjustment->product->name_item ?? '-' }}</strong><br>
-                        <span class="small">{{ $adjustment->product->internal_code ?? '' }}</span>
+                        <strong>{{ $adjustment->asset->name_item ?? '-' }}</strong><br>
+                        <span class="small">{{ $adjustment->asset->internal_code ?? '' }}</span>
                     </td>
                     <td>{{ $adjustment->dictamen?->id ?? '-' }}</td>
                     <td>{{ $adjustment->adjustment_type === 'disposal' ? 'Baja / Disposición' : 'Deterioro' }}</td>

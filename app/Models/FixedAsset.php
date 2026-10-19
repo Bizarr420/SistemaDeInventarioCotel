@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 class FixedAsset extends Model
 {
@@ -83,6 +84,26 @@ class FixedAsset extends Model
         return $this->hasOne(AssetVerification::class)->latestOfMany('verified_at');
     }
 
+    public function annualValuations(): HasMany
+    {
+        return $this->hasMany(FixedAssetValuation::class)->orderBy('valuation_year');
+    }
+
+    public function depreciationParameter(): HasOne
+    {
+        return $this->hasOne(FixedAssetDepreciationParameter::class);
+    }
+
+    public function depreciationEntries(): HasMany
+    {
+        return $this->hasMany(FixedAssetDepreciationEntry::class);
+    }
+
+    public function movements(): HasMany
+    {
+        return $this->hasMany(FixedAssetMovement::class);
+    }
+
     public function isObsolete(): bool
     {
         if ($this->end_of_support && $this->end_of_support->isPast()) {
@@ -117,6 +138,39 @@ class FixedAsset extends Model
         }
 
         return 0;
+    }
+
+    public function usefulLifeMetrics(?Carbon $asOf = null): array
+    {
+        $acquiredAt = $this->acquisition_date;
+        $endOfLife = $this->expected_useful_life
+            ? Carbon::parse($this->expected_useful_life)
+            : ($acquiredAt && (int) $this->useful_life_years > 0
+                ? $acquiredAt->copy()->addYears((int) $this->useful_life_years)
+                : null);
+
+        if (! $acquiredAt || ! $endOfLife) {
+            return [
+                'age_years' => null,
+                'total_years' => null,
+                'remaining_years' => null,
+                'consumed_percentage' => null,
+                'near_end' => false,
+            ];
+        }
+
+        $asOf ??= now();
+        $totalDays = max(1, $acquiredAt->diffInDays($endOfLife, false));
+        $elapsedDays = max(0, $acquiredAt->diffInDays($asOf, false));
+        $remainingDays = max(0, $asOf->diffInDays($endOfLife, false));
+
+        return [
+            'age_years' => $elapsedDays / 365.25,
+            'total_years' => $totalDays / 365.25,
+            'remaining_years' => $remainingDays / 365.25,
+            'consumed_percentage' => min(100, max(0, ($elapsedDays * 100) / $totalDays)),
+            'near_end' => $endOfLife->lte($asOf->copy()->addYears(2)),
+        ];
     }
 
     public function calculateDeterioration(): float

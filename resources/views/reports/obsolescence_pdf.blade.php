@@ -43,7 +43,7 @@
                 <td>{{ $product['is_obsolete'] }}</td>
                 <td>{{ number_format($product['useful_life_percentage'], 2) }}%</td>
                 <td>{{ number_format($product['deterioration'], 2) }}%</td>
-                <td>${{ number_format($product['patrimonial_deviation'], 2) }}</td>
+                <td>Bs {{ number_format($product['patrimonial_deviation'], 2) }}</td>
                 <td>{{ $product['end_of_support'] ?? '-' }}</td>
                 <td>{{ $product['compatibility_status'] ?? '-' }}</td>
                 <td>{{ $product['operational_capacity'] ?? '-' }}</td>

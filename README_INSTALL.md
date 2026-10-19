@@ -119,6 +119,27 @@ php artisan migrate --seed
 
 Esto creará las tablas y poblará datos de prueba (productos, almacenes, usuarios, etc.)
 
+### Importar la planilla maestra de activos fijos
+
+El proyecto incluye `Planilla_Maestra_50_Items_Todas_Las_Cuentas.xlsx`, con 35 cuentas y 50 activos por cuenta. Para importarla:
+
+```bash
+php artisan migrate
+php artisan fixed-assets:import-master --replace
+```
+
+La importación valida la estructura antes de modificar la base de datos, reemplaza todos los activos fijos existentes, elimina sus verificaciones, dictámenes y ajustes contables asociados, y conserva los valores contables 2023–2026 por activo. El valor de 2026 queda como valor contable vigente. La opción `--force` omite la confirmación interactiva; úsala solo cuando ya se haya confirmado el reemplazo:
+
+```bash
+php artisan fixed-assets:import-master --replace --force
+```
+
+El detalle de cada activo muestra el historial anual. Respalda la base de datos antes de volver a ejecutar el reemplazo.
+
+### Notas financieras 11 y 12
+
+La Nota 11 utiliza las valuaciones anuales agrupadas por cuenta; cada registro admite una fecha efectiva de corte y una fuente. La Nota 12 solo puede mostrar saldos si se incorporan balances o movimientos de depreciación por cuenta. El sistema no calcula depreciación a partir de los valores de activos ni rellena periodos sin fuente. El filtro de corte 2026 excluye registros sin fecha efectiva o con fecha posterior al corte.
+
 ### 10. Instalar dependencias Node.js
 
 ```bash
@@ -223,5 +244,3 @@ Esto vigilará cambios en archivos CSS/JS y recompilará automáticamente.
 - ✅ Autenticación y autorización
 - ✅ Interfaz responsiva con Tailwind CSS
 - ✅ Componentes interactivos con Alpine.js
-
-

@@ -9,6 +9,7 @@ use App\Http\Controllers\CosoControlController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DictamenController;
 use App\Http\Controllers\FixedAssetController;
+use App\Http\Controllers\FixedAssetMovementController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MovementController;
 use App\Http\Controllers\ObsoletenessCriterionController;
@@ -29,9 +30,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('inventory', InventoryController::class);
 
     Route::resource('fixed-assets', FixedAssetController::class);
+    Route::get('fixed-assets/acquisitions/create', [FixedAssetMovementController::class, 'createAcquisition'])
+        ->name('fixed-assets.acquisitions.create')
+        ->middleware('role:admin,contable,tecnico');
+    Route::post('fixed-assets/acquisitions', [FixedAssetMovementController::class, 'acquire'])
+        ->name('fixed-assets.acquisitions.store')
+        ->middleware('role:admin,contable,tecnico');
+    Route::post('fixed-assets/{fixed_asset}/movements', [FixedAssetMovementController::class, 'store'])
+        ->name('fixed-assets.movements.store')
+        ->middleware('role:admin,contable,tecnico,auditor');
     Route::get('fixed-assets-export/excel', [FixedAssetController::class, 'exportExcel'])->name('fixed-assets.export.excel');
     Route::get('fixed-assets-export/pdf', [FixedAssetController::class, 'exportPdf'])->name('fixed-assets.export.pdf');
-    Route::patch('fixed-assets/{fixed_asset}/dispose', [FixedAssetController::class, 'dispose'])->name('fixed-assets.dispose');
+    Route::patch('fixed-assets/{fixed_asset}/dispose', [FixedAssetMovementController::class, 'dispose'])
+        ->name('fixed-assets.dispose')
+        ->middleware('role:admin,contable,tecnico,auditor');
     Route::get('fixed-assets-migration', [FixedAssetController::class, 'migrationCreate'])->name('fixed-assets.migration.create');
     Route::post('fixed-assets-migration/preview', [FixedAssetController::class, 'migrationPreview'])->name('fixed-assets.migration.preview');
     Route::post('fixed-assets-migration/store', [FixedAssetController::class, 'migrationStore'])->name('fixed-assets.migration.store');

@@ -6,7 +6,9 @@ use App\Http\Requests\StoreDictamenRequest;
 use App\Models\AccountingAdjustment;
 use App\Models\Dictamen;
 use App\Models\FixedAsset;
+use App\Services\FixedAssetLedgerService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
 
@@ -35,14 +37,14 @@ class DictamenController extends Controller
         return redirect()->route('dictamens.index')->with('success', 'Dictamen creado.');
     }
 
-    public function approve(Dictamen $dictamen)
+    public function approve(Dictamen $dictamen, FixedAssetLedgerService $ledger)
     {
         // Solo contable o auditor puede aprobar
         if (!in_array(auth()->user()->role, ['contable', 'auditor'])) {
             abort(403);
         }
 
-        DB::transaction(function () use ($dictamen) {
+        DB::transaction(function () use ($dictamen, $ledger) {
             $dictamen->update([
                 'status' => 'approved',
                 'approved_by' => auth()->id(),
@@ -50,8 +52,27 @@ class DictamenController extends Controller
             ]);
 
             $asset = $dictamen->asset()->first();
-            $technicalValue = (float) ($asset?->technical_value ?? 0);
-            $accountingValue = (float) ($asset?->current_accounting_value ?? 0);
+            if (! $asset || $asset->technical_value === null) {
+                throw ValidationException::withMessages([
+                    'fixed_asset_id' => 'El dictamen requiere un activo y un valor técnico registrado.',
+                ]);
+            }
+            $hasLedgerSource = DB::table('fixed_asset_valuations')
+                ->where('fixed_asset_id', $asset->id)
+                ->exists()
+                || DB::table('fixed_asset_movements')
+                    ->where('fixed_asset_id', $asset->id)
+                    ->whereDate('effective_date', '<=', now()->toDateString())
+                    ->exists();
+            if (! $hasLedgerSource) {
+                throw ValidationException::withMessages([
+                    'fixed_asset_id' => 'No se puede aprobar el dictamen sin un saldo de activo registrado en el ledger.',
+                ]);
+            }
+
+            $technicalValue = (float) $asset->technical_value;
+            $ledgerBalance = $ledger->assetBalanceForCutoff($asset->id, now()->toDateString());
+            $accountingValue = (float) $ledgerBalance['net'];
             $adjustmentType = $this->determineAdjustmentType($asset);
             $recognizedAmount = $this->calculateRecognizedAmount($adjustmentType, $technicalValue, $accountingValue);
             $status = $recognizedAmount > 0 ? 'posted' : 'no_adjustment';
@@ -77,6 +98,10 @@ class DictamenController extends Controller
                         'technical_value' => $technicalValue,
                         'accounting_value' => $accountingValue,
                         'recognized_amount' => $recognizedAmount,
+                        'measurement_source' => 'SICAT_SIMULATION_LEDGER',
+                        'cutoff_date' => now()->toDateString(),
+                        'ledger_gross' => $ledgerBalance['gross'] ?? null,
+                        'ledger_depreciation' => $ledgerBalance['depreciation'] ?? null,
                     ],
                 ]
             );

@@ -31,8 +31,8 @@ class AccountingAdjustmentController extends Controller
         $adjustments = $this->exportQuery($request)->get()->map(function ($adjustment) {
             return [
                 'Fecha' => optional($adjustment->posted_at)->format('d/m/Y H:i') ?? '-',
-                'Activo' => $adjustment->product->name_item ?? '-',
-                'Código Interno' => $adjustment->product->internal_code ?? '-',
+                'Activo' => $adjustment->asset->name_item ?? '-',
+                'Código Interno' => $adjustment->asset->internal_code ?? '-',
                 'Dictamen ID' => $adjustment->dictamen_id ?? '-',
                 'Técnico' => (float) $adjustment->technical_value,
                 'Contable' => (float) $adjustment->current_accounting_value,
@@ -63,7 +63,7 @@ class AccountingAdjustmentController extends Controller
 
     protected function exportQuery(Request $request)
     {
-        $query = AccountingAdjustment::with(['product', 'dictamen', 'generator', 'approver'])
+        $query = AccountingAdjustment::with(['asset', 'dictamen', 'generator', 'approver'])
             ->latest('posted_at')
             ->latest('id');
 

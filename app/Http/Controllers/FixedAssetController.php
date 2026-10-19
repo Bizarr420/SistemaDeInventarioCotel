@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Supplier;
 use App\Exports\FixedAssetsExport;
+use App\Services\FixedAssetLedgerService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +37,8 @@ class FixedAssetController extends Controller
             'min_remaining_life' => 'nullable|integer|min:0|max:100',
             'max_remaining_life' => 'nullable|integer|min:0|max:100|gte:min_remaining_life',
             'verification_status' => 'nullable|in:verified,pending',
-            'alert' => 'nullable|in:failures,high_deterioration,near_end_of_life,pending_verification,obsolete,verification_differences',
+            'alert' => 'nullable|in:failures,high_deterioration,near_end_of_life,pending_verification,obsolete,verification_differences,incomplete_data,missing_depreciation_parameters',
+            'as_of' => 'nullable|date|after_or_equal:2026-01-01|before_or_equal:today',
             'min_value' => 'nullable|numeric|min:0',
             'max_value' => 'nullable|numeric|min:0',
             'min_age' => 'nullable|integer|min:0|max:100',
@@ -130,7 +132,28 @@ class FixedAssetController extends Controller
         if ($alert === 'high_deterioration') {
             $query->whereRaw("{$remainingLifeExpression} <= 30");
         } elseif ($alert === 'near_end_of_life') {
-            $query->whereRaw("julianday(COALESCE(expected_useful_life, date(acquisition_date, '+' || useful_life_years || ' years'))) - julianday('now') BETWEEN 0 AND ?", [2 * 365.25]);
+            $lifeCutoff = \Illuminate\Support\Carbon::parse($filters['as_of'] ?? now()->toDateString())
+                ->addYears(2)
+                ->toDateString();
+            $endOfLifeExpression = "COALESCE(expected_useful_life, date(acquisition_date, '+' || useful_life_years || ' years'))";
+            $query->whereNotNull('acquisition_date')
+                ->whereRaw("date({$endOfLifeExpression}) <= ?", [$lifeCutoff]);
+        } elseif ($alert === 'incomplete_data') {
+            $query->where(function ($assetQuery): void {
+                $assetQuery->whereNull('supplier_id')
+                    ->orWhereNull('assigned_to')
+                    ->orWhere('assigned_to', '')
+                    ->orWhereNull('assigned_department')
+                    ->orWhere('assigned_department', '')
+                    ->orWhereNull('location_branch')
+                    ->orWhere('location_branch', '')
+                    ->orWhereNull('category_id')
+                    ->orWhereNull('asset_status')
+                    ->orWhere('asset_status', '')
+                    ->orWhereNull('acquisition_date');
+            });
+        } elseif ($alert === 'missing_depreciation_parameters') {
+            $query->doesntHave('depreciationParameter');
         }
 
         if (($filters['verification_status'] ?? null) === 'verified') {
@@ -173,8 +196,9 @@ class FixedAssetController extends Controller
 
         $categories = Category::orderBy('name')->get();
         $suppliers = Supplier::orderBy('name')->get();
+        $period2026Open = DB::table('fixed_asset_periods')->where('year', 2026)->value('status') === 'open';
 
-        return view('fixed-assets.index', compact('assets', 'categories', 'suppliers', 'filters'));
+        return view('fixed-assets.index', compact('assets', 'categories', 'suppliers', 'filters', 'period2026Open'));
     }
 
     public function exportExcel(Request $request)
@@ -206,7 +230,8 @@ class FixedAssetController extends Controller
             'asset_status' => 'nullable|in:operativo,falla,deteriorado,obsoleto',
             'substatus' => 'nullable|in:pendiente,vendido,destruido',
             'verification_status' => 'nullable|in:verified,pending',
-            'alert' => 'nullable|in:failures,high_deterioration,near_end_of_life,pending_verification,obsolete,verification_differences',
+            'alert' => 'nullable|in:failures,high_deterioration,near_end_of_life,pending_verification,obsolete,verification_differences,incomplete_data,missing_depreciation_parameters',
+            'as_of' => 'nullable|date|after_or_equal:2026-01-01|before_or_equal:today',
             'min_value' => 'nullable|numeric|min:0',
             'max_value' => 'nullable|numeric|min:0',
             'min_age' => 'nullable|integer|min:0|max:100',
@@ -214,7 +239,7 @@ class FixedAssetController extends Controller
             'min_remaining_life' => 'nullable|integer|min:0|max:100',
             'max_remaining_life' => 'nullable|integer|min:0|max:100',
         ]);
-        $query = FixedAsset::with(['category', 'supplier', 'latestVerification']);
+        $query = FixedAsset::with(['category', 'supplier', 'latestVerification', 'annualValuations']);
         $query->when($filters['search'] ?? null, fn ($q, $value) => $q->where(function ($sub) use ($value) {
             $sub->where('name_item', 'like', "%{$value}%")
                 ->orWhere('sku', 'like', "%{$value}%")
@@ -269,7 +294,30 @@ class FixedAssetController extends Controller
         if ($alert === 'pending_verification') $query->whereDoesntHave('verifications');
         if ($alert === 'high_deterioration') $query->whereRaw("{$remainingLifeExpression} <= 30");
         if ($alert === 'near_end_of_life') {
-            $query->whereRaw("julianday(COALESCE(expected_useful_life, date(acquisition_date, '+' || useful_life_years || ' years'))) - julianday('now') BETWEEN 0 AND ?", [2 * 365.25]);
+            $lifeCutoff = \Illuminate\Support\Carbon::parse($filters['as_of'] ?? now()->toDateString())
+                ->addYears(2)
+                ->toDateString();
+            $endOfLifeExpression = "COALESCE(expected_useful_life, date(acquisition_date, '+' || useful_life_years || ' years'))";
+            $query->whereNotNull('acquisition_date')
+                ->whereRaw("date({$endOfLifeExpression}) <= ?", [$lifeCutoff]);
+        }
+        if ($alert === 'incomplete_data') {
+            $query->where(function ($assetQuery): void {
+                $assetQuery->whereNull('supplier_id')
+                    ->orWhereNull('assigned_to')
+                    ->orWhere('assigned_to', '')
+                    ->orWhereNull('assigned_department')
+                    ->orWhere('assigned_department', '')
+                    ->orWhereNull('location_branch')
+                    ->orWhere('location_branch', '')
+                    ->orWhereNull('category_id')
+                    ->orWhereNull('asset_status')
+                    ->orWhere('asset_status', '')
+                    ->orWhereNull('acquisition_date');
+            });
+        }
+        if ($alert === 'missing_depreciation_parameters') {
+            $query->doesntHave('depreciationParameter');
         }
         if ($alert === 'verification_differences') {
             $query->whereHas('latestVerification', function ($verificationQuery) {
@@ -284,7 +332,7 @@ class FixedAssetController extends Controller
         return $query->orderBy('name_item')->get();
     }
 
-    public function show(FixedAsset $fixed_asset)
+    public function show(FixedAsset $fixed_asset, FixedAssetLedgerService $ledger)
     {
         $asset = $fixed_asset->load([
             'category',
@@ -292,33 +340,37 @@ class FixedAssetController extends Controller
             'warehouse',
             'latestVerification.verifier',
             'verifications.verifier',
+            'annualValuations',
+            'depreciationParameter.depreciationAccount',
+            'movements' => fn ($query) => $query->orderByDesc('effective_date')->orderByDesc('id'),
         ]);
 
-        $acquisitionValue = (float) ($asset->acquisition_value ?? (($asset->unit_cost ?? 0) * ($asset->quantity ?? 0)));
-        $accountingValue = (float) ($asset->current_accounting_value ?? 0);
-        $depreciationAccumulated = max(0, $acquisitionValue - $accountingValue);
-        $depreciatedPercentage = $acquisitionValue > 0
-            ? min(100, round(($depreciationAccumulated / $acquisitionValue) * 100, 2))
-            : 0;
-        $ageYears = $asset->acquisition_date ? $asset->acquisition_date->diffInYears(now()) : null;
-        $usefulLifeYears = (int) ($asset->useful_life_years ?? 0);
-        $remainingLifeYears = $usefulLifeYears > 0 && $ageYears !== null
-            ? max(0, $usefulLifeYears - $ageYears)
+        $ledgerBalance = $ledger->assetBalanceForCutoff($asset->id, now()->toDateString());
+        $acquisitionValue = (float) ($asset->acquisition_value ?? 0);
+        $accountingValue = (float) $ledgerBalance['net'];
+        $profileAccountingValue = (float) ($asset->current_accounting_value ?? 0);
+        $depreciationAccumulated = (float) $ledgerBalance['depreciation'];
+        $lifeMetrics = $asset->usefulLifeMetrics();
+        $ageYears = $lifeMetrics['age_years'] !== null ? (int) floor($lifeMetrics['age_years']) : null;
+        $usefulLifeYears = (int) ($asset->useful_life_years ?? round($lifeMetrics['total_years'] ?? 0));
+        $remainingLifeYears = $lifeMetrics['remaining_years'] !== null
+            ? round($lifeMetrics['remaining_years'], 1)
             : null;
-        $consumedPercentage = $usefulLifeYears > 0 && $ageYears !== null
-            ? min(100, round(($ageYears / $usefulLifeYears) * 100, 2))
-            : null;
+        $consumedPercentage = $lifeMetrics['consumed_percentage'];
         $estimatedValue = (float) ($asset->technical_value ?? $accountingValue);
         $statusReason = is_array($asset->obsolescence_criteria)
             ? collect($asset->obsolescence_criteria)->map(fn ($value, $key) => $key . ': ' . (is_scalar($value) ? $value : json_encode($value)))->implode(', ')
             : ($asset->obsolescence_criteria ?: $asset->note);
+        $period2026Open = DB::table('fixed_asset_periods')->where('year', 2026)->value('status') === 'open';
 
         return view('fixed-assets.show', compact(
             'asset',
             'acquisitionValue',
             'accountingValue',
             'depreciationAccumulated',
-            'depreciatedPercentage',
+            'profileAccountingValue',
+            'ledgerBalance',
+            'period2026Open',
             'ageYears',
             'usefulLifeYears',
             'remainingLifeYears',
@@ -333,10 +385,7 @@ class FixedAssetController extends Controller
      */
     public function create()
     {
-        $categories = Category::all();
-        $suppliers = Supplier::all();
-
-        return view('fixed-assets.create', compact('categories', 'suppliers'));
+        return redirect()->route('fixed-assets.acquisitions.create');
     }
 
     /**
@@ -344,36 +393,8 @@ class FixedAssetController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'category_id' => 'required|exists:categories,id',
-            'warehouse_id' => 'nullable|exists:warehouses,id',
-            'supplier_id' => 'required|exists:suppliers,id',
-            'location_branch' => 'required|string|max:120',
-            'location_floor' => 'nullable|string|max:80',
-            'location_office' => 'nullable|string|max:120',
-            'assigned_to' => 'nullable|string|max:150',
-            'assigned_department' => 'nullable|string|max:150',
-            'quantity' => 'required|integer|min:0',
-            'unit_cost' => 'required|numeric|min:0',
-            'sku' => 'nullable|string|unique:fixed_assets,sku',
-            'useful_life_years' => 'nullable|integer|min:1',
-            'expected_useful_life' => 'nullable|date',
-        ]);
-
-        if (empty($validated['sku'])) {
-            $validated['sku'] = 'AF-' . now()->format('YmdHis') . '-' . random_int(100, 999);
-        }
-
-        $validated['name_item'] = $validated['name'];
-        unset($validated['name']);
-        $validated['asset_status'] = 'operativo';
-        $validated['obsolete_disposition_status'] = null;
-
-        FixedAsset::create($validated);
-
-        return redirect()->route('fixed-assets.index')->with('success', 'Activo fijo creado exitosamente.');
+        return redirect()->route('fixed-assets.acquisitions.create')
+            ->with('error', 'Las altas deben registrarse con fecha efectiva y movimiento de ledger.');
     }
 
     /**
@@ -400,7 +421,6 @@ class FixedAssetController extends Controller
             'category_id' => 'required|exists:categories,id',
             'warehouse_id' => 'nullable|exists:warehouses,id',
             'supplier_id' => 'required|exists:suppliers,id',
-            'obsolete_disposition_status' => 'nullable|in:pendiente,vendido,destruido',
             'location_branch' => 'required|string|max:120',
             'location_floor' => 'nullable|string|max:80',
             'location_office' => 'nullable|string|max:120',
@@ -413,14 +433,14 @@ class FixedAssetController extends Controller
             'expected_useful_life' => 'nullable|date',
         ]);
 
-        $currentStatus = $asset->asset_status ?? 'operativo';
-
-        if ($currentStatus === 'obsoleto' && empty($validated['obsolete_disposition_status'])) {
-            $validated['obsolete_disposition_status'] = 'pendiente';
-        }
-
-        if ($currentStatus !== 'obsoleto') {
-            $validated['obsolete_disposition_status'] = null;
+        $hasLedgerHistory = DB::table('fixed_asset_valuations')->where('fixed_asset_id', $asset->id)->exists()
+            || DB::table('fixed_asset_movements')->where('fixed_asset_id', $asset->id)->exists()
+            || DB::table('fixed_asset_depreciation_entries')->where('fixed_asset_id', $asset->id)->exists()
+            || DB::table('fixed_asset_depreciation_parameters')->where('fixed_asset_id', $asset->id)->exists();
+        if ($hasLedgerHistory && (int) $validated['category_id'] !== (int) $asset->category_id) {
+            return back()->withErrors([
+                'category_id' => 'No se puede cambiar la categoría de un activo con movimientos o saldos históricos.',
+            ])->withInput();
         }
 
         $validated['name_item'] = $validated['name'];
@@ -436,31 +456,18 @@ class FixedAssetController extends Controller
     public function destroy(FixedAsset $fixed_asset)
     {
         $asset = $fixed_asset;
+        $hasLedgerHistory = DB::table('fixed_asset_valuations')->where('fixed_asset_id', $asset->id)->exists()
+            || DB::table('fixed_asset_movements')->where('fixed_asset_id', $asset->id)->exists()
+            || DB::table('fixed_asset_depreciation_entries')->where('fixed_asset_id', $asset->id)->exists()
+            || DB::table('fixed_asset_depreciation_parameters')->where('fixed_asset_id', $asset->id)->exists();
+        if ($hasLedgerHistory) {
+            return redirect()->route('fixed-assets.show', $asset)
+                ->with('error', 'No se puede eliminar un activo con historial de ledger; registra una baja con fecha efectiva.');
+        }
+
         $asset->delete();
 
         return redirect()->route('fixed-assets.index')->with('success', 'Activo fijo eliminado exitosamente.');
-    }
-
-    /**
-     * Mark a fixed asset as disposed with a final disposition.
-     */
-    public function dispose(Request $request, FixedAsset $fixed_asset)
-    {
-        $asset = $fixed_asset;
-
-        $validated = $request->validate([
-            'obsolete_disposition_status' => 'required|in:vendido,destruido',
-        ]);
-
-        $asset->update([
-            'asset_status' => 'obsoleto',
-            'obsolescence_status' => 'obsolete',
-            'obsolete_disposition_status' => $validated['obsolete_disposition_status'],
-        ]);
-
-        return redirect()
-            ->route('fixed-assets.edit', $asset)
-            ->with('success', 'El activo fue marcado como obsoleto y dado de baja con estado ' . $validated['obsolete_disposition_status'] . '.');
     }
 
     /**

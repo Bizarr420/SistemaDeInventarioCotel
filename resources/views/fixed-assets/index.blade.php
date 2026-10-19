@@ -11,6 +11,11 @@
                 <a href="{{ route('fixed-assets.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 transition ease-in-out duration-150">
                     {{ __('Crear') }}
                 </a>
+                @if($period2026Open)
+                    <a href="{{ route('fixed-assets.acquisitions.create') }}" class="inline-flex items-center px-4 py-2 bg-emerald-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-emerald-800 transition">
+                        Alta 2026
+                    </a>
+                @endif
                 <a href="{{ route('fixed-assets.migration.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition ease-in-out duration-150">
                     {{ __('Migracion') }}
                 </a>
@@ -165,7 +170,7 @@
                                         @if($asset->assigned_department) ({{ $asset->assigned_department }}) @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $asset->quantity ?? 0 }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${{ number_format($asset->unit_cost ?? 0, 2) }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Bs {{ number_format($asset->unit_cost ?? 0, 2) }}</td>
                                     <td data-column="useful-life" class="asset-column-secondary px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $asset->useful_life_years ? $asset->useful_life_years . ' años' : '-' }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         @php($assetStatus = $asset->asset_status ?? 'operativo')

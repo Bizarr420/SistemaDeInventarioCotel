@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-900 leading-tight">
-            {{ __('Reconocimientos Contables SICAT') }}
+            {{ __('Ajustes Patrimoniales SICAT') }}
         </h2>
     </x-slot>
 
@@ -9,7 +9,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-white shadow-sm rounded-lg p-5 border border-gray-100">
-                    <p class="text-sm text-gray-500">Reconocimiento acumulado</p>
+                    <p class="text-sm text-gray-500">Importe de ajustes SICAT registrados</p>
                     <p class="text-2xl font-bold text-emerald-700">{{ number_format($totalRecognized, 2) }}</p>
                 </div>
                 <div class="bg-white shadow-sm rounded-lg p-5 border border-gray-100">
@@ -36,6 +36,10 @@
                     <p class="text-lg font-semibold text-slate-900">Se distingue ajuste por deterioro o baja final</p>
                 </div>
             </div>
+
+                <div class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                    Estos ajustes son registros internos SICAT generados desde dictámenes. No constituyen asientos del mayor contable: esta estructura no almacena cuentas contables ni débitos y créditos.
+                </div>
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
                 <div class="p-6 text-gray-900">
@@ -71,8 +75,8 @@
                                     <tr class="hover:bg-slate-50/70">
                                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{{ optional($adjustment->posted_at)->format('d/m/Y H:i') ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-900">
-                                            <div class="font-medium">{{ $adjustment->product->name_item ?? '-' }}</div>
-                                            <div class="text-xs text-gray-500">{{ $adjustment->product->internal_code ?? '' }}</div>
+                                            <div class="font-medium">{{ $adjustment->asset->name_item ?? '-' }}</div>
+                                            <div class="text-xs text-gray-500">{{ $adjustment->asset->internal_code ?? '' }}</div>
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $adjustment->dictamen?->id ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm">

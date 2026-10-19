@@ -26,7 +26,7 @@
                     <p class="text-3xl font-bold text-emerald-700">{{ $approvedDictamens }}</p>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-                    <p class="text-sm text-gray-500">Reconocimientos registrados</p>
+                    <p class="text-sm text-gray-500">Ajustes SICAT registrados</p>
                     <p class="text-3xl font-bold text-slate-900">{{ $postedAdjustments }}</p>
                 </div>
             </div>
@@ -38,7 +38,7 @@
                         <div class="flex justify-between"><span>Obsolescencia detectada</span><span class="font-semibold">{{ $assetObsoleteCount }}</span></div>
                         <div class="flex justify-between"><span>Dictámenes técnicos</span><span class="font-semibold">{{ $totalDictamens }}</span></div>
                         <div class="flex justify-between"><span>Pendientes de dictamen</span><span class="font-semibold">{{ $pendingDictamens }}</span></div>
-                        <div class="flex justify-between"><span>Reconocimientos contables</span><span class="font-semibold">{{ $totalAdjustments }}</span></div>
+                        <div class="flex justify-between"><span>Ajustes SICAT</span><span class="font-semibold">{{ $totalAdjustments }}</span></div>
                         <div class="flex justify-between"><span>Disposiciones finales</span><span class="font-semibold">{{ $disposalAdjustments }}</span></div>
                     </div>
                 </div>
@@ -47,11 +47,14 @@
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Trazabilidad patrimonial</h3>
                     <div class="space-y-3 text-sm text-gray-700">
                         <div class="flex justify-between"><span>Valor técnico total</span><span class="font-semibold">{{ number_format($assetTechnicalTotal, 2) }}</span></div>
-                        <div class="flex justify-between"><span>Valor contable total</span><span class="font-semibold">{{ number_format($assetAccountingTotal, 2) }}</span></div>
-                        <div class="flex justify-between"><span>Brecha patrimonial</span><span class="font-semibold {{ $assetPatrimonialGap >= 0 ? 'text-green-700' : 'text-red-700' }}">{{ number_format($assetPatrimonialGap, 2) }}</span></div>
+                        <div class="flex justify-between"><span>Valor bruto simulado 2026 al corte</span><span class="font-semibold">{{ number_format($assetAcquisitionTotal, 2) }}</span></div>
+                        <div class="flex justify-between"><span>Depreciación acumulada simulada</span><span class="font-semibold">{{ number_format($assetDepreciationTotal, 2) }}</span></div>
+                        <div class="flex justify-between"><span>Valor neto del escenario</span><span class="font-semibold">{{ number_format($assetAccountingTotal, 2) }}</span></div>
+                        <div class="flex justify-between"><span>Diferencia técnica frente al valor de ficha</span><span class="font-semibold {{ $assetPatrimonialGap >= 0 ? 'text-green-700' : 'text-red-700' }}">{{ number_format($assetPatrimonialGap, 2) }}</span></div>
                         <div class="flex justify-between"><span>Deterioros registrados</span><span class="font-semibold">{{ $deteriorationAdjustments }}</span></div>
-                        <div class="flex justify-between"><span>Reconocidos pendientes</span><span class="font-semibold">{{ $pendingAdjustments }}</span></div>
+                        <div class="flex justify-between"><span>Ajustes SICAT pendientes</span><span class="font-semibold">{{ $pendingAdjustments }}</span></div>
                     </div>
+                    <p class="mt-3 text-xs text-amber-800">Escenario simulado al {{ \Illuminate\Support\Carbon::parse($assetLedgerSummary['cutoff_date'])->format('d/m/Y') }}; no constituye saldo contable oficial.</p>
                 </div>
             </div>
 
@@ -61,7 +64,7 @@
                     <a href="{{ route('fixed-assets.index') }}" class="px-4 py-2 rounded bg-green-600 text-white">Activos</a>
                     <a href="{{ route('fixed-assets.verifications.index') }}" class="px-4 py-2 rounded bg-blue-600 text-white">Verificaciones</a>
                     <a href="{{ route('dictamens.index') }}" class="px-4 py-2 rounded bg-indigo-600 text-white">Dictámenes</a>
-                    <a href="{{ route('accounting-adjustments.index') }}" class="px-4 py-2 rounded bg-emerald-700 text-white">Reconocimientos</a>
+                    <a href="{{ route('accounting-adjustments.index') }}" class="px-4 py-2 rounded bg-emerald-700 text-white">Ajustes SICAT</a>
                     <a href="{{ route('reports.financial-notes') }}" class="px-4 py-2 rounded bg-slate-900 text-white">Notas financieras</a>
                     <a href="{{ route('reports.deterioration') }}" class="px-4 py-2 rounded bg-amber-600 text-white">Deterioro</a>
                 </div>

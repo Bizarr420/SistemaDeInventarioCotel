@@ -37,7 +37,7 @@
                             <p class="text-3xl font-bold">{{ $approvedDictamens }}</p>
                         </div>
                         <div class="rounded-2xl bg-white/10 p-4 backdrop-blur border border-white/10">
-                            <p class="text-slate-300 text-sm">Reconocimientos</p>
+                            <p class="text-slate-300 text-sm">Ajustes SICAT registrados</p>
                             <p class="text-3xl font-bold">{{ $postedAdjustments }}</p>
                         </div>
                     </div>
@@ -46,9 +46,9 @@
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <p class="text-sm text-gray-500">Brecha patrimonial</p>
+                    <p class="text-sm text-gray-500">Diferencia técnica frente al neto simulado</p>
                     <p class="mt-2 text-3xl font-bold {{ $assetPatrimonialGap >= 0 ? 'text-green-700' : 'text-red-700' }}">{{ number_format($assetPatrimonialGap, 2) }}</p>
-                    <p class="mt-2 text-sm text-gray-600">Diferencia entre valor técnico y contable del parque de activos.</p>
+                    <p class="mt-2 text-sm text-gray-600">Comparación de la ficha técnica con el escenario simulado, no un saldo oficial.</p>
                 </div>
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                     <p class="text-sm text-gray-500">Obsolescencia activa</p>
@@ -79,7 +79,7 @@
                             <span class="font-semibold text-amber-700">{{ $assetDeterioratedCount }}</span>
                         </div>
                         <div class="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
-                            <span class="text-gray-700">Reconocimientos pendientes</span>
+                            <span class="text-gray-700">Ajustes SICAT pendientes</span>
                             <span class="font-semibold text-slate-900">{{ $pendingAdjustments }}</span>
                         </div>
                     </div>
@@ -91,7 +91,7 @@
                     <div class="flex flex-wrap gap-2">
                         <a href="{{ route('fixed-assets.index') }}" class="px-4 py-2 rounded bg-green-600 text-white">Activos</a>
                         <a href="{{ route('dictamens.index') }}" class="px-4 py-2 rounded bg-indigo-600 text-white">Dictámenes</a>
-                        <a href="{{ route('accounting-adjustments.index') }}" class="px-4 py-2 rounded bg-emerald-700 text-white">Reconocimientos</a>
+                        <a href="{{ route('accounting-adjustments.index') }}" class="px-4 py-2 rounded bg-emerald-700 text-white">Ajustes SICAT</a>
                         <a href="{{ route('reports.financial-notes') }}" class="px-4 py-2 rounded bg-slate-900 text-white">Notas financieras</a>
                         <a href="{{ route('sicat.overview') }}" class="px-4 py-2 rounded bg-amber-600 text-white">Detalle completo</a>
                     </div>
