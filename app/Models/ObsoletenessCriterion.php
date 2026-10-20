@@ -27,7 +27,7 @@ class ObsoletenessCriterion extends Model
         return $query->where('is_active', true);
     }
 
-    public function matches(Product $product): bool
+    public function matches(Product|FixedAsset $product): bool
     {
         switch ($this->type) {
             case 'end_of_support_days':

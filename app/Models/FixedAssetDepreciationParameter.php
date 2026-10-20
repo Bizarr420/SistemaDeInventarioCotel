@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FixedAssetDepreciationParameter extends Model
 {
+    use Auditable;
+
     protected $fillable = [
         'fixed_asset_id',
         'depreciation_account_id',

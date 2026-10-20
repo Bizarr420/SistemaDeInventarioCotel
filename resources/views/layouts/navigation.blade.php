@@ -140,6 +140,19 @@
                         <x-dropdown-link :href="route('profile.edit')">
                             {{ __('Profile') }}
                         </x-dropdown-link>
+                        @can('users.manage')
+                            <x-dropdown-link :href="route('users.index')">Gestión de usuarios</x-dropdown-link>
+                            <x-dropdown-link :href="route('users.sessions')">Sesiones</x-dropdown-link>
+                        @endcan
+                        @can('roles.manage')
+                            <x-dropdown-link :href="route('roles.index')">Roles y permisos</x-dropdown-link>
+                        @endcan
+                        @can('audit.view')
+                            <x-dropdown-link :href="route('audit_logs.index')">Auditoría y logs</x-dropdown-link>
+                        @endcan
+                        @can('security.manage')
+                            <x-dropdown-link :href="route('security.settings')">Seguridad</x-dropdown-link>
+                        @endcan
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <x-dropdown-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">
@@ -249,6 +262,19 @@
                 <x-responsive-nav-link :href="route('profile.edit')">
                     {{ __('Profile') }}
                 </x-responsive-nav-link>
+                @can('users.manage')
+                    <x-responsive-nav-link :href="route('users.index')">Gestión de usuarios</x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('users.sessions')">Sesiones</x-responsive-nav-link>
+                @endcan
+                @can('roles.manage')
+                    <x-responsive-nav-link :href="route('roles.index')">Roles y permisos</x-responsive-nav-link>
+                @endcan
+                @can('audit.view')
+                    <x-responsive-nav-link :href="route('audit_logs.index')">Auditoría y logs</x-responsive-nav-link>
+                @endcan
+                @can('security.manage')
+                    <x-responsive-nav-link :href="route('security.settings')">Seguridad</x-responsive-nav-link>
+                @endcan
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <x-responsive-nav-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">

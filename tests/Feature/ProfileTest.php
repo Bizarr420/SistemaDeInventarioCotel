@@ -61,7 +61,7 @@ class ProfileTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
-    public function test_user_can_delete_their_account(): void
+    public function test_user_can_deactivate_their_account_without_deleting_audit_history(): void
     {
         $user = User::factory()->create();
 
@@ -76,7 +76,12 @@ class ProfileTest extends TestCase
             ->assertRedirect('/');
 
         $this->assertGuest();
-        $this->assertNull($user->fresh());
+        $this->assertSame('inactive', $user->fresh()->status);
+        $this->assertDatabaseHas('audit_logs', [
+            'module' => 'users',
+            'action' => 'self_deactivated',
+            'entity_id' => (string) $user->id,
+        ]);
     }
 
     public function test_correct_password_must_be_provided_to_delete_account(): void

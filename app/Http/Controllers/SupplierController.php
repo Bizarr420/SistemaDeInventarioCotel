@@ -6,11 +6,15 @@ use App\Models\Supplier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use App\Traits\AuthorizesPermission;
 
 class SupplierController extends Controller
 {
+    use AuthorizesPermission;
+
     public function index(): View
     {
+        $this->authorizeAnyPermission(['assets.view', 'inventory.view']);
         $suppliers = Supplier::orderBy('name')->paginate(15)->withQueryString();
 
         return view('suppliers.index', compact('suppliers'));
@@ -18,11 +22,13 @@ class SupplierController extends Controller
 
     public function create(): View
     {
+        $this->authorizeAnyPermission(['assets.create', 'inventory.create']);
         return view('suppliers.create');
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $this->authorizeAnyPermission(['assets.create', 'inventory.create']);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'contact' => ['nullable', 'string', 'max:150'],
@@ -37,11 +43,13 @@ class SupplierController extends Controller
 
     public function edit(Supplier $supplier): View
     {
+        $this->authorizeAnyPermission(['assets.update', 'inventory.update']);
         return view('suppliers.edit', compact('supplier'));
     }
 
     public function update(Request $request, Supplier $supplier): RedirectResponse
     {
+        $this->authorizeAnyPermission(['assets.update', 'inventory.update']);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'contact' => ['nullable', 'string', 'max:150'],
@@ -56,6 +64,7 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier): RedirectResponse
     {
+        $this->authorizeAnyPermission(['assets.delete', 'inventory.delete']);
         if ($supplier->products()->exists()) {
             return redirect()
                 ->route('suppliers.index')

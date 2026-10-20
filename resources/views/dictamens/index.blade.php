@@ -20,7 +20,7 @@
                                     <span class="ml-2 px-2 py-1 text-xs rounded {{ $dictamen->status === 'approved' ? 'bg-green-200' : 'bg-yellow-200' }}">{{ $dictamen->status }}</span>
                                 </div>
                                 <div>
-                                    @if($dictamen->status === 'draft' && in_array(auth()->user()->role, ['contable', 'auditor']))
+                                    @if($dictamen->status === 'draft' && auth()->user()->hasPermission('dictamens.approve'))
                                         <form action="{{ route('dictamens.approve', $dictamen) }}" method="POST" class="inline">
                                             @csrf
                                             @method('PATCH')

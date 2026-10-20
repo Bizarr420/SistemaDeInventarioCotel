@@ -9,14 +9,15 @@ use App\Models\Dictamen;
 use App\Models\FixedAsset;
 use App\Models\Movement;
 use App\Models\MovementItem;
+use App\Models\ObsoletenessCriterion;
 use App\Models\Product;
-use App\Models\ProductStock;
 use App\Models\StockTransfer;
 use App\Services\FixedAssetLedgerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use App\Services\AuditEventService;
 
 class DashboardController extends Controller
 {
@@ -49,8 +50,11 @@ class DashboardController extends Controller
         return view('sicat.executive', $metrics);
     }
 
-    public function exportSicatOverview(Request $request, FixedAssetLedgerService $ledger)
+    public function exportSicatOverview(Request $request, FixedAssetLedgerService $ledger, AuditEventService $audit)
     {
+        abort_unless($request->user()?->hasPermission('reports.export'), 403);
+        $audit->record('reports', 'sicat_overview_export', null, 'Exportación del resumen SICAT.',
+            request: $request);
         $metrics = $this->buildSicatMetrics($ledger);
 
         $pdf = Pdf::loadView('sicat.overview_pdf', $metrics);
@@ -167,6 +171,37 @@ class DashboardController extends Controller
         $assetDepreciationDisplay = $currencyFormatter((string) $assetDepreciationTotal);
         $assetAccountingDisplay = $currencyFormatter((string) $assetAccountingTotal);
 
+        $depreciableBase = (float) DB::table('fixed_asset_depreciation_parameters')->sum('depreciable_base');
+        $accumulatedDepreciation = (float) $assetLedgerSummary['depreciation_cents'] / 100;
+        $periodDepreciation = (float) DB::table('fixed_asset_depreciation_entries')
+            ->where('period_year', $year)
+            ->when($year === 2026, fn ($query) => $query->where('effective_date', '<=', $asOf.' 23:59:59.999999'))
+            ->sum('amount');
+        $depreciatedPercentage = $depreciableBase > 0
+            ? min(100, ($accumulatedDepreciation / $depreciableBase) * 100)
+            : 0;
+        $pendingDepreciation = max(0, $depreciableBase - $accumulatedDepreciation);
+        $depreciationBreakdown = DB::table('fixed_asset_depreciation_entries as entries')
+            ->join('fixed_asset_accounts as accounts', 'accounts.id', '=', 'entries.fixed_asset_account_id')
+            ->selectRaw('accounts.description as label, SUM(CAST(entries.amount AS REAL)) as total')
+            ->where('entries.period_year', $year)
+            ->when($year === 2026, fn ($query) => $query->where('entries.effective_date', '<=', $asOf.' 23:59:59.999999'))
+            ->groupBy('accounts.id', 'accounts.description')
+            ->orderByDesc('total')
+            ->limit(6)
+            ->get()
+            ->map(fn ($row): array => [
+                'label' => $row->label ?: 'Depreciación acumulada',
+                'value' => (float) $row->total,
+                'display' => 'Bs '.number_format((float) $row->total, 2, ',', '.'),
+            ])
+            ->all();
+        $depreciationStatusBuckets = collect($assetLedgerSummary['depreciation_buckets'] ?? [])->mapWithKeys(fn ($count, $label) => [$label => (int) $count])->all();
+        $depreciationEvolution = [
+            'monthly' => $this->buildDepreciationTrend($year, $asOf, 'month'),
+            'yearly' => $this->buildDepreciationTrend($year, $asOf, 'year'),
+        ];
+
         $stateChart = collect([
             ['name' => 'Operativos', 'status' => 'operativo', 'count' => $assetOperationalCount, 'tone' => 'green'],
             ['name' => 'Con fallas', 'status' => 'falla', 'count' => $assetFailureCount, 'tone' => 'red'],
@@ -264,7 +299,16 @@ class DashboardController extends Controller
             ->first();
         $inventoryValueDisplay = $this->formatMoney((string) ($inventorySummary->value ?? '0'));
 
-        $userCanManageAssets = in_array(auth()->user()->role ?? '', ['admin', 'contable', 'tecnico'], true);
+        $depreciationMetrics = [
+            'accumulated' => $assetLedgerSummary['depreciation'],
+            'period' => number_format((float) $periodDepreciation, 2, ',', '.'),
+            'gross' => $assetLedgerSummary['gross'],
+            'net' => $assetLedgerSummary['net'],
+            'percentage' => number_format((float) $depreciatedPercentage, 2, ',', '.'),
+            'pending' => number_format((float) $pendingDepreciation, 2, ',', '.'),
+        ];
+
+        $userCanManageAssets = auth()->user()?->hasPermission('assets.create') ?? false;
         $currentCutoff = $year === 2026 ? $asOf : now()->toDateString();
         $dashboardFilter = ['year' => $year];
 
@@ -286,6 +330,10 @@ class DashboardController extends Controller
             'assetAccountingTotal',
             'assetAccountingDisplay',
             'assetLedgerSummary',
+            'depreciationBreakdown',
+            'depreciationStatusBuckets',
+            'depreciationEvolution',
+            'depreciationMetrics',
             'verificationPendingCount',
             'verificationDifferenceCount',
             'verificationRecordedCount',
@@ -317,6 +365,52 @@ class DashboardController extends Controller
         $fraction = str_pad($matches[3] ?? '', 2, '0');
 
         return ($matches[1] ?? '').$whole.','.$fraction;
+    }
+
+    private function buildDepreciationTrend(int $year, string $asOf, string $mode): array
+    {
+        $asOfDate = Carbon::parse($asOf)->endOfDay();
+        $periodField = $mode === 'month' ? "strftime('%Y-%m', entries.effective_date)" : "strftime('%Y', entries.effective_date)";
+
+        $periodRows = DB::table('fixed_asset_depreciation_entries as entries')
+            ->selectRaw($periodField.' as period_key, SUM(CAST(entries.amount AS REAL)) as period_amount')
+            ->where('entries.period_year', $year)
+            ->when($year === 2026, fn ($query) => $query->where('entries.effective_date', '<=', $asOfDate->toDateString().' 23:59:59.999999'))
+            ->groupByRaw($periodField)
+            ->orderBy('period_key')
+            ->get();
+
+        if ($periodRows->isEmpty()) {
+            return [];
+        }
+
+        $grossByPeriod = DB::table('fixed_asset_valuations as valuations')
+            ->selectRaw($mode === 'month' ? "strftime('%Y-%m', valuations.as_of_date) as period_key" : "strftime('%Y', valuations.as_of_date) as period_key, SUM(CAST(valuations.amount AS REAL)) as gross_amount")
+            ->when($mode === 'month', fn ($query) => $query->selectRaw('SUM(CAST(valuations.amount AS REAL)) as gross_amount'))
+            ->where('valuation_year', '<=', $year)
+            ->where('valuations.as_of_date', '<=', $asOfDate->toDateString().' 23:59:59.999999')
+            ->groupByRaw($mode === 'month' ? "strftime('%Y-%m', valuations.as_of_date)" : "strftime('%Y', valuations.as_of_date)")
+            ->pluck('gross_amount', 'period_key');
+
+        $accumulated = 0.0;
+        $trend = [];
+        foreach ($periodRows as $row) {
+            $periodAmount = (float) ($row->period_amount ?? 0);
+            $accumulated += $periodAmount;
+            $periodKey = (string) $row->period_key;
+            $grossValue = (float) ($grossByPeriod[$periodKey] ?? 0);
+            $netValue = $grossValue - $accumulated;
+            $trend[] = [
+                'label' => $mode === 'month'
+                    ? Carbon::createFromFormat('Y-m', $periodKey)->translatedFormat('M Y')
+                    : $periodKey,
+                'period' => $periodAmount,
+                'accumulated' => $accumulated,
+                'net' => $netValue,
+            ];
+        }
+
+        return $trend;
     }
 
     private function recentFixedAssetActivity(): array
@@ -390,18 +484,34 @@ class DashboardController extends Controller
 
     private function buildSicatMetrics(FixedAssetLedgerService $ledger): array
     {
-        $products = Product::where('type', 'service')->with('stocks')->get();
+        $products = Product::where('type', 'service')
+            ->with('stocks')
+            ->withExists('movements')
+            ->get();
         $productCount = $products->count();
         $totalItems = Product::count();
-        $stockRows = ProductStock::whereHas('product', fn ($query) => $query->where('type', 'service'))->get();
-        $availableStockUnits = (int) $stockRows->sum('current_stock');
-        $inUseStockUnits = (int) $stockRows->sum('in_use_stock');
-        $reservedStockUnits = (int) $stockRows->sum('reserved_stock');
-        $repairStockUnits = (int) $stockRows->sum('repair_stock');
-        $damagedStockUnits = (int) $stockRows->sum('damaged_stock');
-        $lostStockUnits = (int) $stockRows->sum('lost_stock');
-        $disposedStockUnits = (int) $stockRows->sum('disposed_stock');
-        $otherStockUnits = (int) $stockRows->sum('other_stock');
+        $stockTotals = DB::table('product_stocks as stocks')
+            ->join('products', 'products.id', '=', 'stocks.product_id')
+            ->where('products.type', 'service')
+            ->selectRaw('
+                COALESCE(SUM(stocks.current_stock), 0) as available,
+                COALESCE(SUM(stocks.in_use_stock), 0) as in_use,
+                COALESCE(SUM(stocks.reserved_stock), 0) as reserved,
+                COALESCE(SUM(stocks.repair_stock), 0) as repair,
+                COALESCE(SUM(stocks.damaged_stock), 0) as damaged,
+                COALESCE(SUM(stocks.lost_stock), 0) as lost,
+                COALESCE(SUM(stocks.disposed_stock), 0) as disposed,
+                COALESCE(SUM(stocks.other_stock), 0) as other
+            ')
+            ->first();
+        $availableStockUnits = (int) $stockTotals->available;
+        $inUseStockUnits = (int) $stockTotals->in_use;
+        $reservedStockUnits = (int) $stockTotals->reserved;
+        $repairStockUnits = (int) $stockTotals->repair;
+        $damagedStockUnits = (int) $stockTotals->damaged;
+        $lostStockUnits = (int) $stockTotals->lost;
+        $disposedStockUnits = (int) $stockTotals->disposed;
+        $otherStockUnits = (int) $stockTotals->other;
         $pendingLiquidationUnits = (int) MovementItem::where('liquidation_status', 'pending')
             ->whereHas('movement.product', fn ($query) => $query->where('type', 'service'))
             ->count();
@@ -415,14 +525,15 @@ class DashboardController extends Controller
             + $otherStockUnits
             + $pendingLiquidationUnits;
         $productStockUnits = $availableStockUnits;
-        $productInventoryValue = (float) $products->sum(
-            fn ($product) => (float) ($product->unit_cost ?? 0) * (int) $product->stocks->sum('current_stock')
-        );
+        $productInventoryValue = (float) DB::table('product_stocks as stocks')
+            ->join('products', 'products.id', '=', 'stocks.product_id')
+            ->where('products.type', 'service')
+            ->sum(DB::raw('COALESCE(products.unit_cost, 0) * COALESCE(stocks.current_stock, 0)'));
         $lowStockThreshold = 10;
-        $productsWithStockCount = $products->filter(fn ($product) => $product->total_stock > 0)->count();
-        $outOfStockProductCount = $products->filter(fn ($product) => $product->total_stock <= 0)->count();
+        $productsWithStockCount = $products->filter(fn ($product) => $product->stocks->sum('current_stock') > 0)->count();
+        $outOfStockProductCount = $products->filter(fn ($product) => $product->stocks->sum('current_stock') <= 0)->count();
         $lowStockProductCount = $products->filter(fn ($product) => (int) $product->quantity <= $lowStockThreshold)->count();
-        $productsWithoutMovementCount = $products->filter(fn ($product) => $product->movements()->doesntExist())->count();
+        $productsWithoutMovementCount = $products->filter(fn ($product) => ! (bool) $product->movements_exists)->count();
         $periodStart = now()->startOfMonth();
         $periodEnd = now()->endOfMonth();
         $periodMovements = Movement::whereBetween('created_at', [$periodStart, $periodEnd]);
@@ -444,10 +555,11 @@ class DashboardController extends Controller
         $transfersInTransit = StockTransfer::where('status', 'in_transit')->count();
         $warehouseTransfers = (int) Movement::where('type', 'transfer')->count();
 
-        $assets = FixedAsset::with(['verifications', 'category', 'supplier'])->get();
+        $assets = FixedAsset::with(['latestVerification', 'category', 'supplier'])->get();
         $fixedAssetCount = $assets->count();
         $fixedAssetUnits = (int) $assets->sum('quantity');
-        $obsoleteProductCount = Product::where('type', 'service')->get()->filter(fn($p) => $p->isObsolete())->count();
+        $activeObsolescenceCriteria = ObsoletenessCriterion::active()->get();
+        $obsoleteProductCount = $products->filter(fn ($product) => $product->isObsolete($activeObsolescenceCriteria))->count();
         $obsoleteFixedAssetCount = $assets->where('asset_status', 'obsoleto')->count();
 
         $assetOperationalCount = $assets->where('asset_status', 'operativo')->count();
@@ -510,7 +622,7 @@ class DashboardController extends Controller
         $assetAverageDepreciationPercentage = $assetDepreciationRate;
         $assetDepreciationBuckets = $assetLedgerSummary['depreciation_buckets'];
         $assetDepreciationBucketMax = $assetLedgerSummary['depreciation_bucket_max'];
-        $assetWithoutVerificationCount = $assets->filter(fn ($asset) => $asset->verifications->isEmpty())->count();
+        $assetWithoutVerificationCount = $assets->filter(fn ($asset) => $asset->latestVerification === null)->count();
         $assetVerifiedCount = $fixedAssetCount - $assetWithoutVerificationCount;
         $assetVerificationRate = $fixedAssetCount > 0
             ? round(($assetVerifiedCount * 100) / $fixedAssetCount, 2)
@@ -613,9 +725,9 @@ class DashboardController extends Controller
             ->values();
         $assetExpiringLifeCount = $assetNearEndOfLife->count();
         $assetAgeMaxCount = max(1, max($ageBuckets));
-        $latestAssetVerifications = $assets->mapWithKeys(function ($asset) {
-            return [$asset->id => $asset->verifications->sortByDesc('verified_at')->first()];
-        });
+        $latestAssetVerifications = $assets->mapWithKeys(
+            fn ($asset) => [$asset->id => $asset->latestVerification]
+        );
         $assetVerificationPendingCount = $assets->filter(
             fn ($asset) => !$latestAssetVerifications->get($asset->id)
         )->count();
@@ -631,10 +743,17 @@ class DashboardController extends Controller
             0,
             $fixedAssetCount - $assetVerificationPendingCount - $assetVerificationDifferenceCount
         );
-        $lastAssetVerification = $assets
-            ->flatMap(fn ($asset) => $asset->verifications)
-            ->sortByDesc('verified_at')
-            ->first();
+        $assetLatestVerifications = DB::table('asset_verifications as verifications')
+            ->join('fixed_assets as assets', 'assets.id', '=', 'verifications.fixed_asset_id')
+            ->orderByDesc('verifications.verified_at')
+            ->orderByDesc('verifications.id')
+            ->limit(5)
+            ->get([
+                'assets.name_item as asset',
+                'verifications.verified_at as date',
+                'verifications.status',
+            ]);
+        $lastAssetVerification = $assetLatestVerifications->first();
         $assetAlertCounts = [
             'failures' => $assetFailureCount,
             'high_deterioration' => $assetHighDeteriorationCount,
@@ -643,11 +762,6 @@ class DashboardController extends Controller
             'obsolete' => $assetObsoleteCount,
             'verification_differences' => $assetVerificationDifferenceCount,
         ];
-        $assetLatestVerifications = $assets->flatMap(fn ($asset) => $asset->verifications->map(fn ($verification) => [
-            'asset' => $asset->name_item,
-            'date' => $verification->verified_at,
-            'status' => $verification->status,
-        ]))->sortByDesc('date')->take(5);
         $ledgerCategoryValues = collect($assetLedgerSummary['category_values'])->keyBy('category_id');
         $assetCategoryAnalysis = $assets
             ->groupBy('category_id')
@@ -669,7 +783,7 @@ class DashboardController extends Controller
 
         $unreadAlerts = Alert::where('is_read', false)->count();
         $totalProducts = Product::count();
-        $obsoleteProducts = Product::all()->filter(fn($p) => $p->isObsolete())->count();
+        $obsoleteProducts = $obsoleteProductCount;
         $totalAlerts = Alert::count();
 
         $totalDictamens = Dictamen::count();

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Exports\AccountingAdjustmentsExport;
 use App\Models\AccountingAdjustment;
+use App\Traits\AuthorizesPermission;
+use App\Services\AuditEventService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -11,8 +13,11 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class AccountingAdjustmentController extends Controller
 {
+    use AuthorizesPermission;
+
     public function index(Request $request): View
     {
+        $this->authorizePermission('reports.financial');
         $query = $this->exportQuery($request);
 
         $adjustments = $query->paginate(20);
@@ -26,8 +31,11 @@ class AccountingAdjustmentController extends Controller
         ]);
     }
 
-    public function export(Request $request)
+    public function export(Request $request, AuditEventService $audit)
     {
+        $this->authorizePermission('reports.export');
+        $audit->record('accounting', 'adjustments_export', null, 'Exportación de ajustes patrimoniales.',
+            newValues: ['filters' => $request->query()], request: $request);
         $adjustments = $this->exportQuery($request)->get()->map(function ($adjustment) {
             return [
                 'Fecha' => optional($adjustment->posted_at)->format('d/m/Y H:i') ?? '-',

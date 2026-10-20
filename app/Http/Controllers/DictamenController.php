@@ -7,6 +7,7 @@ use App\Models\AccountingAdjustment;
 use App\Models\Dictamen;
 use App\Models\FixedAsset;
 use App\Services\FixedAssetLedgerService;
+use App\Traits\AuthorizesPermission;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -14,8 +15,11 @@ use Illuminate\Support\Facades\DB;
 
 class DictamenController extends Controller
 {
+    use AuthorizesPermission;
+
     public function index(): View
     {
+        $this->authorizePermission('assets.view');
         $dictamens = Dictamen::with(['asset', 'user'])->orderByDesc('created_at')->paginate(20);
 
         return view('dictamens.index', compact('dictamens'));
@@ -23,11 +27,14 @@ class DictamenController extends Controller
 
     public function create(FixedAsset $fixedAsset): View
     {
+        $this->authorizePermission('dictamens.create');
+
         return view('dictamens.create', ['asset' => $fixedAsset]);
     }
 
     public function store(StoreDictamenRequest $request)
     {
+        $this->authorizePermission('dictamens.create');
         Dictamen::create([
             'fixed_asset_id' => $request->fixed_asset_id,
             'user_id' => auth()->id(),
@@ -39,10 +46,7 @@ class DictamenController extends Controller
 
     public function approve(Dictamen $dictamen, FixedAssetLedgerService $ledger)
     {
-        // Solo contable o auditor puede aprobar
-        if (!in_array(auth()->user()->role, ['contable', 'auditor'])) {
-            abort(403);
-        }
+        $this->authorizePermission('dictamens.approve');
 
         DB::transaction(function () use ($dictamen, $ledger) {
             $dictamen->update([

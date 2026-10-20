@@ -10,15 +10,21 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        User::updateOrCreate(
-            ['email' => 'admin@cotel.bo'],
+        $email = env('SICAT_INITIAL_ADMIN_EMAIL');
+        $password = env('SICAT_INITIAL_ADMIN_PASSWORD');
+        if (! $email || ! $password) {
+            return;
+        }
+
+        User::firstOrCreate(
+            ['email' => $email],
             [
-                'name' => 'Admin',
-                'password' => Hash::make('Admin123!'),
+                'name' => 'Administrador SICAT',
+                'password' => Hash::make($password),
                 'email_verified_at' => now(),
-                'role' => 'auditor', // o el rol apropiado
+                'role' => 'admin',
+                'status' => 'active',
             ]
         );
-
     }
 }

@@ -11,7 +11,7 @@ class StoreDictamenRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->role === 'tecnico';
+        return auth()->check() && auth()->user()->hasPermission('dictamens.create');
     }
 
     /**

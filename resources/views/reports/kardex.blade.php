@@ -19,7 +19,7 @@
   @if($product)
     <div class="bg-white rounded-lg shadow p-6 mb-6">
       <h2 class="text-xl font-semibold text-gray-800">{{ $product->name_item }}</h2>
-      <p class="text-sm text-gray-500">Stock total actual: <span class="font-semibold text-gray-900">{{ $product->total_stock }}</span></p>
+      <p class="text-sm text-gray-500">Stock total actual: <span class="font-semibold text-gray-900">{{ $product->stocks_sum_current_stock }}</span></p>
     </div>
 
     <div class="overflow-x-auto bg-white rounded-lg shadow">
@@ -36,8 +36,8 @@
           </tr>
         </thead>
         <tbody>
-          @php($balance = 0)
-          @forelse($product->movements as $movement)
+          @php($balance = $openingBalance)
+          @forelse($movements as $movement)
             @php($balance += $movement->type === 'in' ? $movement->quantity : -$movement->quantity)
             <tr class="border-t">
               <td class="px-3 py-2">{{ $movement->created_at->format('d/m/Y H:i') }}</td>
@@ -59,6 +59,9 @@
           @endforelse
         </tbody>
       </table>
+    </div>
+    <div class="mt-4">
+      {{ $movements->links() }}
     </div>
   @endif
   </div>

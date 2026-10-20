@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 
 class Product extends Model
 {
@@ -111,7 +113,7 @@ class Product extends Model
         return (int) $this->stocks()->sum('current_stock');
     }
 
-    public function isObsolete(): bool
+    public function isObsolete(?Collection $criteria = null): bool
     {
         if ($this->end_of_support && $this->end_of_support->isPast()) {
             return true;
@@ -125,7 +127,7 @@ class Product extends Model
             return true;
         }
 
-        foreach (ObsoletenessCriterion::active()->get() as $criterion) {
+        foreach ($criteria ?? ObsoletenessCriterion::active()->get() as $criterion) {
             if ($criterion->matches($this)) {
                 return true;
             }
@@ -134,37 +136,30 @@ class Product extends Model
         return false;
     }
 
-    public function calculateUsefulLife(): int
+    public function calculateUsefulLife(): float
     {
-        if ($this->acquisition_date && $this->useful_life_years) {
-            $usedYears = $this->acquisition_date->diffInYears(now());
-
-            if ($this->useful_life_years > 0) {
-                return min(100, (int) round(($usedYears * 100) / $this->useful_life_years));
-            }
+        if (! $this->acquisition_date) {
+            return 0.0;
         }
 
-        return 0;
+        $endOfLife = $this->expected_useful_life
+            ? Carbon::parse($this->expected_useful_life)
+            : ($this->useful_life_years > 0
+                ? $this->acquisition_date->copy()->addYears((int) $this->useful_life_years)
+                : null);
+        if (! $endOfLife) {
+            return 0.0;
+        }
+
+        $totalDays = max(1, $this->acquisition_date->diffInDays($endOfLife, false));
+        $elapsedDays = max(0, $this->acquisition_date->diffInDays(now()->startOfDay(), false));
+
+        return min(100.0, ($elapsedDays * 100.0) / $totalDays);
     }
 
     public function calculateDeterioration(): float
     {
-        if ($this->acquisition_date && $this->expected_useful_life) {
-            $totalDays = max(1, $this->acquisition_date->diffInDays($this->expected_useful_life, false));
-            $remainingDays = max(0, now()->diffInDays($this->expected_useful_life, false));
-
-            return max(0.0, min(100.0, ($remainingDays * 100.0) / $totalDays));
-        }
-
-        if ($this->acquisition_date && $this->useful_life_years && $this->useful_life_years > 0) {
-            $totalDays = max(1, (int) round($this->useful_life_years * 365));
-            $elapsedDays = max(0, $this->acquisition_date->diffInDays(now()));
-            $remainingDays = max(0, $totalDays - $elapsedDays);
-
-            return max(0.0, min(100.0, ($remainingDays * 100.0) / $totalDays));
-        }
-
-        return 100.0;
+        return 100.0 - $this->calculateUsefulLife();
     }
 
     public function calculatePatrimonialDeviation(): float

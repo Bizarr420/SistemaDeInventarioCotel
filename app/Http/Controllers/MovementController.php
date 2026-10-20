@@ -17,11 +17,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Illuminate\Support\Str;
+use App\Services\AuditEventService;
+use App\Traits\AuthorizesPermission;
 
 class MovementController extends Controller
 {
+    use AuthorizesPermission;
+
     public function index(Request $request): View
     {
+        $this->authorizePermission('inventory.view');
         $operation = $request->input('operation');
         $query = Movement::with(['product', 'warehouse', 'user', 'technician', 'parent', 'transfer.creator', 'transfer.sourceWarehouse', 'transfer.destinationWarehouse'])
             ->whereHas('product', fn ($query) => $query->where('type', 'service'))
@@ -83,8 +88,9 @@ class MovementController extends Controller
         ]);
     }
 
-    public function store(StoreMovementRequest $request): RedirectResponse
+    public function store(StoreMovementRequest $request, AuditEventService $audit): RedirectResponse
     {
+        $this->authorizePermission('inventory.create');
         $data = $request->validated();
 
         $operationMap = [
@@ -106,7 +112,8 @@ class MovementController extends Controller
             $data['reason'] = 'Entrega a técnico';
         }
 
-        DB::transaction(function () use ($data) {
+        try {
+        DB::transaction(function () use ($data, $request, $audit) {
             $stock = ProductStock::firstOrCreate(
                 [
                     'product_id' => $data['product_id'],
@@ -114,6 +121,7 @@ class MovementController extends Controller
                 ],
                 ['current_stock' => 0]
             );
+            $stockBefore = $stock->only(['current_stock', 'disposed_stock']);
 
             if ($data['type'] === 'out' && $stock->current_stock < $data['quantity']) {
                 throw ValidationException::withMessages([
@@ -164,7 +172,25 @@ class MovementController extends Controller
                     'current_status' => $data['operation_type'] === 'disposal' ? 'disposed' : 'available',
                 ]);
             }
+            $audit->record('inventory', 'stock_movement', $movement, 'Movimiento de inventario aplicado.',
+                $stockBefore, $stock->only(['current_stock', 'disposed_stock']), request: $request,
+                context: [
+                    'product_id' => (int) $data['product_id'],
+                    'warehouse_id' => (int) $data['warehouse_id'],
+                    'movement_type' => $data['type'],
+                    'quantity' => (int) $data['quantity'],
+                    'reference_code' => $movement->reference_code,
+                ]);
         });
+        } catch (ValidationException $exception) {
+            $audit->record('inventory', 'stock_movement_rejected', null,
+                'Operación de inventario rechazada por validación de negocio.',
+                result: 'rejected',
+                reason: collect($exception->errors())->flatten()->implode(' '),
+                request: $request,
+                context: ['product_id' => (int) $data['product_id'], 'warehouse_id' => (int) $data['warehouse_id']]);
+            throw $exception;
+        }
 
         return redirect()
             ->route('movements.index')
@@ -173,6 +199,7 @@ class MovementController extends Controller
 
     public function show(Movement $movement): View
     {
+        $this->authorizePermission('inventory.view');
         abort_unless($movement->product?->type === 'service', 404);
 
         if ($movement->type === 'out' && $movement->items()->count() < $movement->quantity) {
@@ -189,6 +216,7 @@ class MovementController extends Controller
 
     public function liquidate(Request $request, Movement $movement): RedirectResponse
     {
+        $this->authorizePermission('inventory.approve');
         abort_unless($movement->type === 'out' && $movement->product?->type === 'service', 404);
 
         $validated = $request->validate([
@@ -323,6 +351,7 @@ class MovementController extends Controller
 
     public function storeTransfer(Request $request): RedirectResponse
     {
+        $this->authorizePermission('inventory.create');
         $data = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'source_warehouse_id' => ['required', 'exists:warehouses,id', 'different:destination_warehouse_id'],
@@ -383,6 +412,7 @@ class MovementController extends Controller
 
     public function receiveTransfer(StockTransfer $transfer): RedirectResponse
     {
+        $this->authorizePermission('inventory.approve');
         DB::transaction(function () use ($transfer): void {
             $transfer->refresh();
             abort_unless($transfer->status === 'in_transit', 422, 'La transferencia ya fue procesada.');
@@ -427,6 +457,7 @@ class MovementController extends Controller
 
     public function cancelTransfer(StockTransfer $transfer): RedirectResponse
     {
+        $this->authorizePermission('inventory.approve');
         DB::transaction(function () use ($transfer): void {
             $transfer->refresh();
             abort_unless($transfer->status === 'in_transit', 422, 'La transferencia ya fue procesada.');

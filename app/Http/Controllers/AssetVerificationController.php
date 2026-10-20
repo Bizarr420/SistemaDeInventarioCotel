@@ -4,14 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\AssetVerification;
 use App\Models\FixedAsset;
+use App\Traits\AuthorizesPermission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class AssetVerificationController extends Controller
 {
+    use AuthorizesPermission;
+
     public function index(): View
     {
+        $this->authorizePermission('assets.view');
         $verifications = AssetVerification::with(['asset', 'verifier'])
             ->latest('verified_at')
             ->latest('id')
@@ -22,6 +27,7 @@ class AssetVerificationController extends Controller
 
     public function create(Request $request): View
     {
+        $this->authorizePermission('assets.create');
         $assets = FixedAsset::orderBy('name_item')->get();
         $selectedAssetId = $request->integer('asset_id');
 
@@ -30,6 +36,7 @@ class AssetVerificationController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $this->authorizePermission('assets.create');
         $validated = $request->validate([
             'fixed_asset_id' => 'required|exists:fixed_assets,id',
             'verified_at' => 'required|date',
@@ -43,8 +50,6 @@ class AssetVerificationController extends Controller
 
         $validated['verified_by'] = auth()->id();
 
-        AssetVerification::create($validated);
-
         $updates = [
             'asset_status' => $validated['status'],
         ];
@@ -57,7 +62,10 @@ class AssetVerificationController extends Controller
             $updates['obsolete_disposition_status'] = null;
         }
 
-        $asset->update($updates);
+        DB::transaction(function () use ($validated, $asset, $updates): void {
+            AssetVerification::create($validated);
+            $asset->update($updates);
+        });
 
         return redirect()->route('fixed-assets.verifications.index')
             ->with('success', 'Verificacion registrada correctamente.');

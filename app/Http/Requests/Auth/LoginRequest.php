@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Models\User;
+use App\Services\AuditEventService;
 
 class LoginRequest extends FormRequest
 {
@@ -43,10 +45,34 @@ class LoginRequest extends FormRequest
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
+            app(AuditEventService::class)->record(
+                module: 'authentication',
+                action: 'login_failed',
+                description: 'Intento de inicio de sesión rechazado.',
+                result: 'failed',
+                reason: 'Credenciales no válidas.',
+                request: $this,
+                context: ['account_found' => User::where('email', $this->input('email'))->exists()],
+            );
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
+        }
+
+        $user = Auth::user();
+        if (! $user || ! $user->isAccessAllowed()) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+            app(AuditEventService::class)->record(
+                module: 'authentication',
+                action: 'login_rejected',
+                description: 'Inicio de sesión rechazado por estado de cuenta.',
+                result: 'rejected',
+                reason: 'La cuenta no está activa o su acceso venció.',
+                request: $this,
+            );
+            throw ValidationException::withMessages(['email' => trans('auth.failed')]);
         }
 
         RateLimiter::clear($this->throttleKey());

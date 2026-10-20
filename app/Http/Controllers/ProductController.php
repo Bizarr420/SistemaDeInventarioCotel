@@ -10,13 +10,17 @@ use App\Models\ProductStock;
 use App\Models\Supplier;
 use App\Models\Warehouse;
 use App\Services\SpringService;
+use App\Traits\AuthorizesPermission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class ProductController extends Controller
 {
+    use AuthorizesPermission;
+
     public function index(): View
     {
+        $this->authorizePermission('inventory.view');
         $search = request('q');
 
         $products = Product::with(['stocks.warehouse', 'category', 'supplier'])
@@ -41,6 +45,7 @@ class ProductController extends Controller
 
     public function create(): View
     {
+        $this->authorizePermission('inventory.create');
         return view('products.create', [
             'categories' => Category::orderBy('name')->get(),
             'suppliers' => Supplier::orderBy('name')->get(),
@@ -50,6 +55,7 @@ class ProductController extends Controller
 
     public function store(StoreProductRequest $request): RedirectResponse
     {
+        $this->authorizePermission('inventory.create');
         $data = $request->validated();
 
         $product = Product::create($data);
@@ -84,6 +90,7 @@ class ProductController extends Controller
 
     public function show(Product $product): View
     {
+        $this->authorizePermission('inventory.view');
         $product->load(['stocks.warehouse', 'category', 'supplier']);
 
         return view('products.show', compact('product'));
@@ -91,6 +98,7 @@ class ProductController extends Controller
 
     public function edit(Product $product): View
     {
+        $this->authorizePermission('inventory.update');
         return view('products.edit', [
             'product' => $product,
             'categories' => Category::orderBy('name')->get(),
@@ -100,6 +108,7 @@ class ProductController extends Controller
 
     public function update(UpdateProductRequest $request, Product $product): RedirectResponse
     {
+        $this->authorizePermission('inventory.update');
         $product->update($request->validated());
 
         return redirect()
@@ -109,6 +118,7 @@ class ProductController extends Controller
 
     public function destroy(Product $product): RedirectResponse
     {
+        $this->authorizePermission('inventory.delete');
         $product->delete();
 
         return redirect()
@@ -118,6 +128,7 @@ class ProductController extends Controller
 
     public function syncSpring(): RedirectResponse
     {
+        $this->authorizePermission('inventory.create');
         $spring = new SpringService();
         $assets = $spring->fetchAssets();
 

@@ -8,6 +8,8 @@ use App\Models\Category;
 use App\Models\Supplier;
 use App\Exports\FixedAssetsExport;
 use App\Services\FixedAssetLedgerService;
+use App\Traits\AuthorizesPermission;
+use App\Services\AuditEventService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,11 +18,14 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class FixedAssetController extends Controller
 {
+    use AuthorizesPermission;
+
     /**
      * Display a listing of fixed assets (computers, equipment, etc.).
      */
     public function index(Request $request)
     {
+        $this->authorizePermission('assets.view');
         $filters = $request->validate([
             'search' => 'nullable|string|max:150',
             'category_id' => 'nullable|integer|exists:categories,id',
@@ -201,15 +206,21 @@ class FixedAssetController extends Controller
         return view('fixed-assets.index', compact('assets', 'categories', 'suppliers', 'filters', 'period2026Open'));
     }
 
-    public function exportExcel(Request $request)
+    public function exportExcel(Request $request, AuditEventService $audit)
     {
+        $this->authorizePermission('assets.export');
+        $audit->record('fixed-assets', 'export_excel', null, 'Exportación XLSX de activos fijos.',
+            newValues: ['filters' => $request->query()], request: $request);
         $assets = $this->exportAssets($request);
 
         return Excel::download(new FixedAssetsExport($assets), 'activos-fijos-' . now()->format('Y-m-d') . '.xlsx');
     }
 
-    public function exportPdf(Request $request)
+    public function exportPdf(Request $request, AuditEventService $audit)
     {
+        $this->authorizePermission('assets.export');
+        $audit->record('fixed-assets', 'export_pdf', null, 'Exportación PDF de activos fijos.',
+            newValues: ['filters' => $request->query()], request: $request);
         $assets = $this->exportAssets($request);
         $headings = (new FixedAssetsExport(collect()))->headings();
 
@@ -334,6 +345,7 @@ class FixedAssetController extends Controller
 
     public function show(FixedAsset $fixed_asset, FixedAssetLedgerService $ledger)
     {
+        $this->authorizePermission('assets.view');
         $asset = $fixed_asset->load([
             'category',
             'supplier',
@@ -385,6 +397,7 @@ class FixedAssetController extends Controller
      */
     public function create()
     {
+        $this->authorizePermission('assets.create');
         return redirect()->route('fixed-assets.acquisitions.create');
     }
 
@@ -393,6 +406,7 @@ class FixedAssetController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorizePermission('assets.create');
         return redirect()->route('fixed-assets.acquisitions.create')
             ->with('error', 'Las altas deben registrarse con fecha efectiva y movimiento de ledger.');
     }
@@ -402,6 +416,7 @@ class FixedAssetController extends Controller
      */
     public function edit(FixedAsset $fixed_asset)
     {
+        $this->authorizePermission('assets.update');
         $asset = $fixed_asset;
         $categories = Category::all();
         $suppliers = Supplier::all();
@@ -414,6 +429,7 @@ class FixedAssetController extends Controller
      */
     public function update(Request $request, FixedAsset $fixed_asset)
     {
+        $this->authorizePermission('assets.update');
         $asset = $fixed_asset;
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -455,6 +471,7 @@ class FixedAssetController extends Controller
      */
     public function destroy(FixedAsset $fixed_asset)
     {
+        $this->authorizePermission('assets.delete');
         $asset = $fixed_asset;
         $hasLedgerHistory = DB::table('fixed_asset_valuations')->where('fixed_asset_id', $asset->id)->exists()
             || DB::table('fixed_asset_movements')->where('fixed_asset_id', $asset->id)->exists()
@@ -475,6 +492,7 @@ class FixedAssetController extends Controller
      */
     public function migrationCreate(Request $request)
     {
+        $this->authorizePermission('assets.create');
         if ($request->boolean('clear_preview')) {
             session()->forget('fixed_assets_migration_preview');
 
@@ -493,6 +511,7 @@ class FixedAssetController extends Controller
      */
     public function migrationPreview(Request $request)
     {
+        $this->authorizePermission('assets.create');
         $request->validate([
             'migration_file' => 'required|file|mimes:xlsx,xls,csv,pdf|max:10240',
         ]);
@@ -541,6 +560,7 @@ class FixedAssetController extends Controller
      */
     public function migrationStore(Request $request)
     {
+        $this->authorizePermission('assets.create');
         $payload = session('fixed_assets_migration_preview');
 
         if (empty($payload['rows']) || !is_array($payload['rows'])) {

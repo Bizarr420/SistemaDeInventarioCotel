@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use App\Services\AuditEventService;
 use RuntimeException;
 use SimpleXMLElement;
 use ZipArchive;
@@ -25,7 +26,7 @@ class ImportFixedAssetsMasterCommand extends Command
 
     private const EXPECTED_CATEGORIES = 35;
 
-    public function handle(): int
+    public function handle(AuditEventService $audit): int
     {
         if (! $this->option('replace')) {
             $this->error('No data changed. Pass --replace to replace the current fixed assets.');
@@ -70,7 +71,7 @@ class ImportFixedAssetsMasterCommand extends Command
             return self::SUCCESS;
         }
 
-        DB::transaction(function () use ($data): void {
+        DB::transaction(function () use ($data, $audit): void {
             DB::table('fixed_asset_valuations')->delete();
             DB::table('fixed_assets')->delete();
 
@@ -146,6 +147,15 @@ class ImportFixedAssetsMasterCommand extends Command
             foreach (array_chunk($valuationRows, 500) as $chunk) {
                 DB::table('fixed_asset_valuations')->insert($chunk);
             }
+            $audit->record('fixed-assets', 'master_import', null,
+                'Importación de planilla maestra de activos completada.',
+                newValues: [
+                    'assets_imported' => count($data['assets']),
+                    'categories_imported' => count($data['categories']),
+                    'valuations_imported' => count($data['assets']) * count(self::YEARS),
+                    'actor' => 'system',
+                ],
+                context: ['source_file' => basename($this->argument('path') ?: 'Planilla_Maestra_50_Items_Todas_Las_Cuentas.xlsx')]);
         });
 
         $this->info(sprintf(

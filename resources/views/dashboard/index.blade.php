@@ -32,9 +32,6 @@
       <h2 id="executive-title" class="text-lg font-semibold text-slate-900">Activos fijos</h2>
       <span class="text-xs text-slate-500">Saldos a {{ \Illuminate\Support\Carbon::parse($asOf)->format('d/m/Y') }}</span>
     </div>
-    <p class="mb-4 rounded-md border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-      Escenario SICAT simulado. Los valores no constituyen saldos contables oficiales. Los importes patrimoniales y la depreciación son simulados y no oficiales.
-    </p>
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
       <a href="{{ route('fixed-assets.index') }}" class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-400">
         <p class="text-xs font-medium text-slate-500">Total de activos</p>
@@ -65,6 +62,131 @@
         <p class="text-xs font-medium text-slate-300">Valor neto del escenario</p>
         <p class="mt-2 text-xl font-bold text-white">{{ $assetAccountingDisplay }}</p>
         <p class="mt-1 text-xs text-slate-300">Bruto menos depreciación</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="depreciation-title" class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <div class="mb-4 flex items-center justify-between gap-3">
+      <div>
+        <h2 id="depreciation-title" class="text-lg font-semibold text-slate-900">Depreciación de activos fijos</h2>
+        <p class="mt-1 text-sm text-slate-500">Escenario SICAT simulado. Los valores no constituyen saldos contables oficiales. No son contabilidad oficial auditada.</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+      <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <p class="text-xs font-medium text-slate-500">Depreciación acumulada</p>
+        <p class="mt-2 text-lg font-bold text-slate-900">Bs {{ number_format((float) ($depreciationMetrics['accumulated'] ?? 0), 2, ',', '.') }}</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <p class="text-xs font-medium text-slate-500">Depreciación del período</p>
+        <p class="mt-2 text-lg font-bold text-slate-900">Bs {{ $depreciationMetrics['period'] ?? '0,00' }}</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <p class="text-xs font-medium text-slate-500">Valor bruto</p>
+        <p class="mt-2 text-lg font-bold text-slate-900">Bs {{ number_format((float) ($depreciationMetrics['gross'] ?? 0), 2, ',', '.') }}</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <p class="text-xs font-medium text-slate-500">Valor neto en libros</p>
+        <p class="mt-2 text-lg font-bold text-slate-900">Bs {{ number_format((float) ($depreciationMetrics['net'] ?? 0), 2, ',', '.') }}</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <p class="text-xs font-medium text-slate-500">% depreciado</p>
+        <p class="mt-2 text-lg font-bold text-slate-900">{{ $depreciationMetrics['percentage'] ?? '0,00' }}%</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-slate-900 p-3">
+        <p class="text-xs font-medium text-slate-300">Valor pendiente de depreciar</p>
+        <p class="mt-2 text-lg font-bold text-white">Bs {{ number_format((float) ($depreciationMetrics['pending'] ?? 0), 2, ',', '.') }}</p>
+      </div>
+    </div>
+
+    <div class="mt-5 grid gap-4 lg:grid-cols-[1.05fr_1.45fr]">
+      <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <h3 class="text-sm font-semibold text-slate-900">Estado de depreciación</h3>
+        <div class="mt-4 space-y-3">
+          @foreach($depreciationStatusBuckets as $label => $count)
+            @php
+              $depreciationLink = match ($label) {
+                  'Sin parámetros' => route('fixed-assets.index', ['alert' => 'missing_depreciation_parameters']),
+                  'Nuevo' => route('fixed-assets.index'),
+                  'Parcialmente depreciado' => route('fixed-assets.index', ['alert' => 'missing_depreciation_parameters']),
+                  'Altamente depreciado' => route('fixed-assets.index'),
+                  'Totalmente depreciado' => route('fixed-assets.index'),
+                  default => route('fixed-assets.index')
+              };
+              $maxBucket = max(1, collect($depreciationStatusBuckets)->max());
+            @endphp
+            <a href="{{ $depreciationLink }}" class="block rounded-md border border-slate-200 bg-white p-2.5 hover:border-slate-300">
+              <div class="mb-1 flex items-center justify-between gap-3 text-sm">
+                <span class="font-medium text-slate-700">{{ $label }}</span>
+                <span class="font-semibold text-slate-900">{{ number_format($count) }}</span>
+              </div>
+              <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+                <div class="h-full rounded-full bg-amber-500" style="width: {{ ($count / $maxBucket) * 100 }}%"></div>
+              </div>
+            </a>
+          @endforeach
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-slate-200 bg-white p-4">
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="text-sm font-semibold text-slate-900">Evolución de la depreciación</h3>
+          <div class="flex flex-wrap gap-2" role="tablist" aria-label="Cambiar intervalo de depreciación">
+            <button type="button" data-depreciation-tab="monthly" class="rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white">Mensual</button>
+            <button type="button" data-depreciation-tab="yearly" class="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">Anual</button>
+          </div>
+        </div>
+
+        @foreach(['monthly', 'yearly'] as $mode)
+          <div id="depreciation-panel-{{ $mode }}" class="mt-4 space-y-3" @if($mode !== 'monthly') hidden @endif>
+            @if(empty($depreciationEvolution[$mode]))
+              <p class="rounded-md bg-slate-50 p-3 text-sm text-slate-600">No existe información histórica suficiente para mostrar la evolución de {{ $mode === 'monthly' ? 'meses' : 'gestiones' }} en este período.</p>
+            @else
+              @php($chartMax = max(1, collect($depreciationEvolution[$mode])->map(fn ($row) => max((float) ($row['period'] ?? 0), (float) ($row['accumulated'] ?? 0), (float) ($row['net'] ?? 0)))->max()))
+              @foreach($depreciationEvolution[$mode] as $point)
+                <div class="rounded-md border border-slate-200 bg-slate-50 p-2.5">
+                  <div class="mb-2 flex items-center justify-between gap-2 text-[11px] text-slate-600">
+                    <span class="font-medium text-slate-700">{{ $point['label'] }}</span>
+                    <span>Dep. período: Bs {{ number_format((float) ($point['period'] ?? 0), 2, ',', '.') }}</span>
+                  </div>
+                  <div class="space-y-2">
+                    <div>
+                      <div class="mb-1 flex justify-between text-[10px] text-slate-500"><span>Período</span><span>Bs {{ number_format((float) ($point['period'] ?? 0), 2, ',', '.') }}</span></div>
+                      <div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-amber-500" style="width: {{ (($point['period'] ?? 0) / $chartMax) * 100 }}%"></div></div>
+                    </div>
+                    <div>
+                      <div class="mb-1 flex justify-between text-[10px] text-slate-500"><span>Acumulada</span><span>Bs {{ number_format((float) ($point['accumulated'] ?? 0), 2, ',', '.') }}</span></div>
+                      <div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-slate-900" style="width: {{ (($point['accumulated'] ?? 0) / $chartMax) * 100 }}%"></div></div>
+                    </div>
+                    <div>
+                      <div class="mb-1 flex justify-between text-[10px] text-slate-500"><span>Valor neto</span><span>Bs {{ number_format((float) ($point['net'] ?? 0), 2, ',', '.') }}</span></div>
+                      <div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-emerald-500" style="width: {{ (($point['net'] ?? 0) / $chartMax) * 100 }}%"></div></div>
+                    </div>
+                  </div>
+                </div>
+              @endforeach
+            @endif
+          </div>
+        @endforeach
+      </div>
+    </div>
+
+    <div class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div class="flex items-center justify-between gap-3">
+        <h3 class="text-sm font-semibold text-slate-900">Análisis por categoría y cuenta</h3>
+        <span class="text-[11px] text-slate-500">Top {{ count($depreciationBreakdown) }} categorías</span>
+      </div>
+      <div class="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        @forelse($depreciationBreakdown as $row)
+          <div class="rounded-md border border-slate-200 bg-white p-3">
+            <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ Str::limit($row['label'], 32) }}</p>
+            <p class="mt-1 text-base font-bold text-slate-900">{{ $row['display'] }}</p>
+          </div>
+        @empty
+          <p class="text-sm text-slate-600">No hay registros de depreciación para el período seleccionado.</p>
+        @endforelse
       </div>
     </div>
   </section>
@@ -258,7 +380,7 @@
                 @endif
               </div>
               <div class="flex shrink-0 items-center gap-2 text-xs text-slate-500">
-                @if($item['simulated']) <span class="rounded bg-amber-100 px-2 py-0.5 font-medium text-amber-800">Simulado</span> @endif
+                @if($item['simulated'])  @endif
                 {{ \Illuminate\Support\Carbon::parse($item['date'])->format('d/m/Y') }}
               </div>
             </li>
@@ -319,6 +441,22 @@
         panel.hidden = panel.dataset.analysisPanel !== selected;
       });
       chartLabel.textContent = labels[selected] + (selected === 'category' ? ' · gestión {{ $year }}' : '');
+    }));
+
+    const depTabs = document.querySelectorAll('[data-depreciation-tab]');
+    const depPanels = document.querySelectorAll('[id^="depreciation-panel-"]');
+    depTabs.forEach((tab) => tab.addEventListener('click', () => {
+      const selected = tab.dataset.depreciationTab;
+      depTabs.forEach((item) => {
+        const active = item === tab;
+        item.classList.toggle('bg-slate-900', active);
+        item.classList.toggle('text-white', active);
+        item.classList.toggle('bg-slate-100', !active);
+        item.classList.toggle('text-slate-700', !active);
+      });
+      depPanels.forEach((panel) => {
+        panel.hidden = panel.id !== 'depreciation-panel-' + selected;
+      });
     }));
   })();
 </script>

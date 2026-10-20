@@ -3,49 +3,51 @@
 namespace App\Traits;
 
 use App\Models\AuditLog;
-use Illuminate\Support\Facades\Request;
+use App\Services\AuditEventService;
 
 trait Auditable
 {
     public static function bootAuditable()
     {
         static::created(function ($model) {
-            $model->audit('created');
+            $model->auditEvent('created');
         });
 
         static::updated(function ($model) {
-            $model->audit('updated');
+            $model->auditEvent('updated');
         });
 
         static::deleted(function ($model) {
-            $model->audit('deleted');
+            $model->auditEvent('deleted');
         });
     }
 
-    protected function audit($event)
+    protected function auditEvent(string $event): void
     {
-        $oldValues = null;
-        $newValues = null;
-
-        if ($event === 'updated') {
-            $oldValues = $this->getOriginal();
-            $newValues = $this->getAttributes();
-        } elseif ($event === 'created') {
+        $changes = $this->getChanges();
+        $oldValues = [];
+        $newValues = [];
+        foreach ($changes as $key => $value) {
+            if (in_array($key, ['created_at', 'updated_at'], true)) {
+                continue;
+            }
+            $oldValues[$key] = $this->getPrevious()[$key] ?? null;
+            $newValues[$key] = $value;
+        }
+        if ($event === 'created') {
             $newValues = $this->getAttributes();
         } elseif ($event === 'deleted') {
             $oldValues = $this->getOriginal();
+            $newValues = [];
         }
 
-        AuditLog::create([
-            'user_id' => auth()->id(),
-            'auditable_type' => get_class($this),
-            'auditable_id' => $this->getKey(),
-            'event' => $event,
-            'old_values' => $oldValues,
-            'new_values' => $newValues,
-            'ip_address' => Request::ip(),
-            'user_agent' => Request::userAgent(),
-            'session_id' => session()->getId(),
-        ]);
+        app(AuditEventService::class)->record(
+            module: strtolower(class_basename($this)),
+            action: $event,
+            entity: $this,
+            description: class_basename($this).' '.$event,
+            oldValues: $oldValues,
+            newValues: $newValues,
+        );
     }
 }

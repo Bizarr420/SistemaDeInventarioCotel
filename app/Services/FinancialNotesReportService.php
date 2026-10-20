@@ -34,15 +34,15 @@ class FinancialNotesReportService
         $recordedThrough = collect([
             DB::table('fixed_asset_valuations')
                 ->where('valuation_year', 2026)
-                ->whereDate('as_of_date', '<=', $cutoffDate)
+                ->where('as_of_date', '<=', $cutoffDate.' 23:59:59.999999')
                 ->max('as_of_date'),
             DB::table('fixed_asset_movements')
                 ->where('period_year', 2026)
-                ->whereDate('effective_date', '<=', $cutoffDate)
+                ->where('effective_date', '<=', $cutoffDate.' 23:59:59.999999')
                 ->max('effective_date'),
             DB::table('fixed_asset_depreciation_entries')
                 ->where('period_year', 2026)
-                ->whereDate('effective_date', '<=', $cutoffDate)
+                ->where('effective_date', '<=', $cutoffDate.' 23:59:59.999999')
                 ->max('effective_date'),
         ])->filter()->max();
         $accountsSources = DB::table('fixed_asset_valuations')
@@ -62,18 +62,17 @@ class FinancialNotesReportService
             'rows' => $rows11,
             'totals' => $totals11,
             'estimated_years' => [],
-            'source_warning' => 'Datos de escenario SICAT simulado. La asignación por cuenta de 2023 y 2024 reproduce los totales de referencia distribuyendo importes por activo en proporción a la planilla archivada; no es conciliación contable oficial.',
             'movement_warning' => 'Los movimientos efectivos de 2026 se agregan al saldo de apertura del escenario y se excluyen si son posteriores al corte. Los periodos cerrados mantienen snapshots históricos.',
             'sources' => $accountsSources,
             'cutoff_date' => $cutoffDate,
             'dated_2026_count' => DB::table('fixed_asset_valuations')
                 ->where('valuation_year', 2026)
                 ->whereNotNull('as_of_date')
-                ->whereDate('as_of_date', '<=', $cutoffDate)
+                ->where('as_of_date', '<=', $cutoffDate.' 23:59:59.999999')
                 ->count(),
             'future_2026_count' => DB::table('fixed_asset_valuations')
                 ->where('valuation_year', 2026)
-                ->whereDate('as_of_date', '>', $cutoffDate)
+                ->where('as_of_date', '>', $cutoffDate.' 23:59:59.999999')
                 ->count(),
             'undated_2026_count' => DB::table('fixed_asset_valuations')
                 ->where('valuation_year', 2026)
@@ -83,11 +82,11 @@ class FinancialNotesReportService
             'recorded_through_date' => $recordedThrough,
             'future_movement_count' => DB::table('fixed_asset_movements')
                 ->where('period_year', 2026)
-                ->whereDate('effective_date', '>', $cutoffDate)
+                ->where('effective_date', '>', $cutoffDate.' 23:59:59.999999')
                 ->count(),
             'future_depreciation_count' => DB::table('fixed_asset_depreciation_entries')
                 ->where('period_year', 2026)
-                ->whereDate('effective_date', '>', $cutoffDate)
+                ->where('effective_date', '>', $cutoffDate.' 23:59:59.999999')
                 ->count(),
             'historical_validation' => $this->validate($references11, $totals11),
             'account_discrepancies' => $this->archivedDifferences($values11),
@@ -102,7 +101,6 @@ class FinancialNotesReportService
             'rows' => $rows12,
             'totals' => $totals12,
             'estimated_years' => [],
-            'source_warning' => 'Datos de depreciación del escenario SICAT simulado; requieren validación de método, vidas útiles, valores residuales y asignación por cuenta antes de cualquier uso oficial.',
             'sign_warning' => 'Los asientos simulados de depreciación se almacenan con signo negativo como contra-activo. La nota presenta magnitudes positivas para seguir la convención de los totales históricos de referencia.',
             'historical_validation' => $this->validate($references12, $totals12),
             'account_discrepancies' => [],
@@ -206,20 +204,19 @@ class FinancialNotesReportService
 
     private function undated2026Total(): ?string
     {
-        $amounts = DB::table('fixed_asset_valuations')
+        $totals = DB::table('fixed_asset_valuations')
             ->where('valuation_year', 2026)
             ->whereNull('as_of_date')
-            ->pluck('amount');
-        if ($amounts->isEmpty()) {
+            ->selectRaw('
+                COUNT(*) as valuation_count,
+                SUM(CAST(ROUND(amount * 100, 0) AS INTEGER)) as amount_cents
+            ')
+            ->first();
+        if (! $totals || (int) $totals->valuation_count === 0) {
             return null;
         }
 
-        $cents = 0;
-        foreach ($amounts as $amount) {
-            $cents += $this->toCents((string) $amount);
-        }
-
-        return $this->fromCents($cents);
+        return $this->fromCents((int) $totals->amount_cents);
     }
 
     private function archivedDifferences(array $yearValues): array
@@ -233,12 +230,14 @@ class FinancialNotesReportService
                 $query->whereNull('accounts.account_type')
                     ->orWhere('accounts.account_type', 'fixed_asset');
             })
-            ->get([
-                'originals.valuation_year',
-                'originals.amount',
-                'accounts.account_code',
-                'categories.name as category_name',
-            ]);
+            ->selectRaw('
+                originals.valuation_year,
+                accounts.account_code,
+                categories.name as category_name,
+                SUM(CAST(ROUND(originals.amount * 100, 0) AS INTEGER)) as amount_cents
+            ')
+            ->groupBy('originals.valuation_year', 'accounts.account_code', 'categories.name')
+            ->get();
         $oldTotals = [];
         foreach ($archived as $record) {
             $code = $record->account_code;
@@ -249,7 +248,7 @@ class FinancialNotesReportService
                 continue;
             }
             $year = (string) $record->valuation_year;
-            $oldTotals[$year][$code] = ($oldTotals[$year][$code] ?? 0) + $this->toCents((string) $record->amount);
+            $oldTotals[$year][$code] = ($oldTotals[$year][$code] ?? 0) + (int) $record->amount_cents;
         }
 
         $differences = [];

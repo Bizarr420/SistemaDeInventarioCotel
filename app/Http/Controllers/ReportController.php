@@ -13,15 +13,29 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Traits\AuthorizesPermission;
+use App\Services\AuditEventService;
+use Illuminate\Http\JsonResponse;
 
 class ReportController extends Controller
 {
-    public function financialNotes(Request $request, FinancialNotesReportService $financialNotes): View
+    use AuthorizesPermission;
+
+    public function financialNotes(Request $request, FinancialNotesReportService $financialNotes, AuditEventService $audit): View
     {
+        $this->authorizePermission('reports.financial');
         $filters = $request->validate([
             'management' => 'nullable|in:all,2023,2024,2025,2026',
             'cutoff_date' => ['nullable', 'date', 'after_or_equal:2026-01-01', 'before_or_equal:today'],
         ]);
+        $audit->record(
+            'reports',
+            'financial_notes_viewed',
+            null,
+            'Consulta de Notas Financieras.',
+            newValues: $filters,
+            request: $request,
+        );
         $selectedManagement = $filters['management'] ?? 'all';
         $cutoffDate = $filters['cutoff_date'] ?? now()->toDateString();
 
@@ -63,7 +77,7 @@ class ReportController extends Controller
             [
                 'code' => 'Nota 9',
                 'title' => 'Inventarios',
-                'description' => 'Composici?n del saldo de inventarios en almacenes.',
+                'description' => 'Composición del saldo de inventarios en almacenes.',
                 'totals' => $inventoryTotals,
                 'rows' => $inventoryRows,
                 'years' => array_map('strval', $inventoryYears),
@@ -71,7 +85,7 @@ class ReportController extends Controller
             ],
             [
                 'code' => 'Nota 13',
-                'title' => 'Participaci?n en sociedades',
+                'title' => 'Participación en sociedades',
                 'description' => 'Cuotas de capital social en ITS.',
                 'totals' => ['2024' => 87671771.38, '2023' => 91352693.26],
                 'rows' => [
@@ -107,8 +121,28 @@ class ReportController extends Controller
         ));
     }
 
+    public function logFinancialNotesPrint(Request $request, AuditEventService $audit): JsonResponse
+    {
+        $this->authorizePermission('reports.print');
+        $filters = $request->validate([
+            'management' => 'nullable|in:all,2023,2024,2025,2026',
+            'cutoff_date' => ['nullable', 'date', 'after_or_equal:2026-01-01', 'before_or_equal:today'],
+        ]);
+        $audit->record(
+            'reports',
+            'financial_notes_print',
+            null,
+            'Impresión de Notas Financieras.',
+            newValues: $filters,
+            request: $request,
+        );
+
+        return response()->json(['recorded' => true]);
+    }
+
     public function summary(): View
     {
+        $this->authorizePermission('reports.view');
         return view('reports.summary', [
             'totalProducts' => Product::where('type', 'service')->count(),
             'totalStock' => ProductStock::whereHas('product', function ($query) {
@@ -126,51 +160,90 @@ class ReportController extends Controller
 
     public function kardex(Request $request): View
     {
+        $this->authorizePermission('reports.view');
         $productId = $request->integer('product_id');
-        $product = $productId ? Product::where('type', 'service')
-            ->with(['movements' => function ($query) {
-                $query->orderBy('created_at');
-            }, 'movements.warehouse', 'movements.user'])
-            ->find($productId) : null;
+        $product = $productId
+            ? Product::where('type', 'service')->withSum('stocks', 'current_stock')->find($productId)
+            : null;
+        $movements = null;
+        $openingBalance = 0;
+        if ($product) {
+            $movements = $product->movements()
+                ->with(['warehouse', 'user'])
+                ->orderBy('created_at')
+                ->orderBy('id')
+                ->paginate(50)
+                ->withQueryString();
+            $firstMovement = $movements->first();
+            if ($firstMovement) {
+                $openingBalance = (int) $product->movements()
+                    ->where(function ($query) use ($firstMovement): void {
+                        $query->where('created_at', '<', $firstMovement->created_at)
+                            ->orWhere(function ($tie) use ($firstMovement): void {
+                                $tie->where('created_at', $firstMovement->created_at)
+                                    ->where('id', '<', $firstMovement->id);
+                            });
+                    })
+                    ->selectRaw("COALESCE(SUM(CASE WHEN type = 'in' THEN quantity WHEN type = 'out' THEN -quantity ELSE 0 END), 0) as balance")
+                    ->value('balance');
+            }
+        }
 
         return view('reports.kardex', [
             'product' => $product,
-            'products' => Product::where('type', 'service')->orderBy('name_item')->get(),
+            'products' => Product::where('type', 'service')->orderBy('name_item')->get(['id', 'internal_code', 'name_item']),
+            'movements' => $movements,
+            'openingBalance' => $openingBalance,
         ]);
     }
 
     public function deterioration(): View
     {
-        $products = FixedAsset::all()->map(function ($product) {
-            return [
-                'product' => $product,
-                'useful_life_percentage' => $product->calculateUsefulLife(),
-                'deterioration' => $product->calculateDeterioration(),
-                'patrimonial_deviation' => $product->calculatePatrimonialDeviation(),
-            ];
-        });
+        $this->authorizePermission('reports.view');
+        $products = FixedAsset::query()
+            ->select([
+                'id', 'name_item', 'end_of_support', 'compatibility_status', 'operational_capacity',
+                'acquisition_date', 'useful_life_years', 'expected_useful_life',
+                'current_accounting_value', 'technical_value', 'acquisition_value', 'unit_cost', 'quantity',
+            ])
+            ->orderBy('id')
+            ->paginate(50)
+            ->through(function ($product) {
+                return [
+                    'product' => $product,
+                    'useful_life_percentage' => $product->calculateUsefulLife(),
+                    'deterioration' => $product->calculateDeterioration(),
+                    'patrimonial_deviation' => $product->calculatePatrimonialDeviation(),
+                ];
+            });
 
         return view('reports.deterioration', compact('products'));
     }
 
     public function comparative(): View
     {
+        $this->authorizePermission('reports.view');
         $products = FixedAsset::query()
             ->whereNotNull('technical_value')
             ->whereNotNull('current_accounting_value')
-            ->get();
+            ->orderBy('id')
+            ->paginate(50);
 
         return view('reports.comparative', compact('products'));
     }
 
-    public function exportObsolescence(Request $request)
+    public function exportObsolescence(Request $request, AuditEventService $audit)
     {
-        $products = FixedAsset::all()->map(function ($product) {
+        $this->authorizePermission('reports.export');
+        $audit->record('reports', 'obsolescence_export', null,
+            'Exportación del reporte de obsolescencia.', newValues: ['format' => $request->input('format')], request: $request);
+        $criteria = \App\Models\ObsoletenessCriterion::active()->get();
+        $products = FixedAsset::query()->orderBy('id')->get()->map(function ($product) use ($criteria) {
             return [
                 'id' => $product->id,
                 'name' => $product->name_item,
                 'internal_code' => $product->internal_code,
-                'is_obsolete' => $product->isObsolete() ? 'Sí' : 'No',
+                'is_obsolete' => $product->isObsolete($criteria) ? 'Sí' : 'No',
                 'useful_life_percentage' => $product->calculateUsefulLife(),
                 'deterioration' => $product->calculateDeterioration(),
                 'patrimonial_deviation' => $product->calculatePatrimonialDeviation(),

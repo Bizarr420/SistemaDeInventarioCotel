@@ -7,15 +7,18 @@ use App\Models\Category;
 use App\Models\Warehouse;
 use App\Models\Supplier;
 use App\Models\ProductStock;
+use App\Traits\AuthorizesPermission;
 use Illuminate\Http\Request;
 
 class InventoryController extends Controller
 {
+    use AuthorizesPermission;
     /**
     * Display a listing of inventory products only.
      */
     public function index()
     {
+        $this->authorizePermission('inventory.view');
         $products = Product::with(['category', 'warehouse', 'supplier'])
             ->where('type', 'service')
             ->paginate(15);
@@ -28,6 +31,7 @@ class InventoryController extends Controller
      */
     public function create()
     {
+        $this->authorizePermission('inventory.create');
         $categories = Category::all();
         $warehouses = Warehouse::all();
         $suppliers = Supplier::all();
@@ -40,6 +44,7 @@ class InventoryController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorizePermission('inventory.create');
         $validated = $request->validate([
             'name_item' => 'required|string|max:150',
             'description' => 'nullable|string',
@@ -69,6 +74,7 @@ class InventoryController extends Controller
      */
     public function edit(Product $inventory)
     {
+        $this->authorizePermission('inventory.update');
         $product = $inventory;
         abort_unless($product->type === 'service', 404);
 
@@ -84,6 +90,7 @@ class InventoryController extends Controller
      */
     public function update(Request $request, Product $inventory)
     {
+        $this->authorizePermission('inventory.update');
         $product = $inventory;
         abort_unless($product->type === 'service', 404);
 
@@ -114,6 +121,7 @@ class InventoryController extends Controller
      */
     public function destroy(Product $inventory)
     {
+        $this->authorizePermission('inventory.delete');
         $product = $inventory;
         abort_unless($product->type === 'service', 404);
 

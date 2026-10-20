@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\FixedAsset;
+use App\Models\FixedAssetMovement;
+use App\Models\FixedAssetDepreciationEntry;
+use App\Traits\AuthorizesPermission;
 use App\Services\FixedAssetLedgerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,8 +18,11 @@ use RuntimeException;
 
 class FixedAssetMovementController extends Controller
 {
+    use AuthorizesPermission;
+
     public function dispose(Request $request, FixedAsset $fixed_asset, FixedAssetLedgerService $ledger): RedirectResponse
     {
+        $this->authorizePermission('assets.update');
         $data = $request->validate([
             'obsolete_disposition_status' => 'required|in:vendido,destruido',
             'effective_date' => ['required', 'date', 'after_or_equal:2026-01-01', 'before_or_equal:today'],
@@ -34,6 +40,7 @@ class FixedAssetMovementController extends Controller
 
     public function createAcquisition(): View
     {
+        $this->authorizePermission('assets.create');
         $categories = DB::table('fixed_asset_accounts')
             ->join('categories', 'categories.id', '=', 'fixed_asset_accounts.category_id')
             ->where('fixed_asset_accounts.account_type', 'fixed_asset')
@@ -45,6 +52,7 @@ class FixedAssetMovementController extends Controller
 
     public function acquire(Request $request, FixedAssetLedgerService $ledger): RedirectResponse
     {
+        $this->authorizePermission('assets.create');
         $data = $request->validate([
             'internal_code' => 'nullable|string|max:100|unique:fixed_assets,internal_code',
             'name_item' => 'required|string|max:150',
@@ -97,7 +105,7 @@ class FixedAssetMovementController extends Controller
                 'note' => 'Alta de activo 2026; origen USER_SIMULATION.',
             ]);
 
-            DB::table('fixed_asset_movements')->insert([
+            FixedAssetMovement::create([
                 'fixed_asset_id' => $asset->id,
                 'fixed_asset_account_id' => $accountId,
                 'period_year' => 2026,
@@ -111,7 +119,6 @@ class FixedAssetMovementController extends Controller
                 'description' => 'Alta de activo con fecha efectiva informada por el usuario.',
                 'created_by' => auth()->id(),
                 'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
             if (! empty($data['useful_life_years'])) {
@@ -177,6 +184,7 @@ class FixedAssetMovementController extends Controller
 
     public function store(Request $request, FixedAsset $fixed_asset, FixedAssetLedgerService $ledger): RedirectResponse
     {
+        $this->authorizePermission('assets.update');
         $data = $request->validate([
             'movement_type' => 'required|in:addition,disposal,revaluation,transfer,status_change',
             'effective_date' => ['required', 'date', 'after_or_equal:2026-01-01', 'before_or_equal:today'],
@@ -231,7 +239,7 @@ class FixedAssetMovementController extends Controller
                     ? $this->multiplyDivideRounded($accumulatedCents, $amountCents, $grossCents)
                     : 0;
                 if ($releasedDepreciation > 0 && $depreciationAccountId) {
-                    DB::table('fixed_asset_depreciation_entries')->insert([
+                    FixedAssetDepreciationEntry::create([
                         'fixed_asset_id' => $asset->id,
                         'fixed_asset_account_id' => $depreciationAccountId,
                         'period_year' => 2026,
@@ -243,7 +251,6 @@ class FixedAssetMovementController extends Controller
                         'description' => 'Reversión de depreciación proporcional a la baja simulada.',
                         'created_by' => auth()->id(),
                         'created_at' => now(),
-                        'updated_at' => now(),
                     ]);
                 }
                 $amountCents *= -1;
@@ -254,7 +261,7 @@ class FixedAssetMovementController extends Controller
             }
             $location = $data['location'] ?? null;
 
-            DB::table('fixed_asset_movements')->insert([
+            FixedAssetMovement::create([
                 'fixed_asset_id' => $asset->id,
                 'fixed_asset_account_id' => $accountId,
                 'period_year' => 2026,
@@ -268,7 +275,6 @@ class FixedAssetMovementController extends Controller
                 'description' => $data['description'],
                 'created_by' => auth()->id(),
                 'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
             if ($status !== null || $location !== null) {
@@ -322,7 +328,7 @@ class FixedAssetMovementController extends Controller
             );
             if ($charge > 0) {
                 $effectiveDate = $monthEnd->gt($cutoff) ? $cutoff->toDateString() : $monthEnd->toDateString();
-                DB::table('fixed_asset_depreciation_entries')->insert([
+                FixedAssetDepreciationEntry::create([
                     'fixed_asset_id' => $assetId,
                     'fixed_asset_account_id' => $accountId,
                     'period_year' => 2026,
@@ -334,7 +340,6 @@ class FixedAssetMovementController extends Controller
                     'description' => 'Depreciación mensual por línea recta desde fecha de alta informada.',
                     'created_by' => auth()->id(),
                     'created_at' => now(),
-                    'updated_at' => now(),
                 ]);
                 $remainingCents -= $charge;
             }

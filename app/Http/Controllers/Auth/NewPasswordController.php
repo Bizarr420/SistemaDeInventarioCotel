@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
+use App\Services\AuditEventService;
 
 class NewPasswordController extends Controller
 {
@@ -28,7 +29,7 @@ class NewPasswordController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, AuditEventService $audit): RedirectResponse
     {
         $request->validate([
             'token' => ['required'],
@@ -41,13 +42,16 @@ class NewPasswordController extends Controller
         // database. Otherwise we will parse the error and return the response.
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $user) use ($request) {
+            function (User $user) use ($request, $audit) {
                 $user->forceFill([
                     'password' => Hash::make($request->password),
                     'remember_token' => Str::random(60),
+                    'session_version' => $user->session_version + 1,
                 ])->save();
 
                 event(new PasswordReset($user));
+                $audit->record('authentication', 'password_reset', $user,
+                    'Contraseña restablecida mediante enlace de un solo uso.', request: $request);
             }
         );
 

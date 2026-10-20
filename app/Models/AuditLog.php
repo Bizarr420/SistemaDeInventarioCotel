@@ -19,11 +19,27 @@ class AuditLog extends Model
         'ip_address',
         'user_agent',
         'session_id',
+        'module',
+        'action',
+        'entity_type',
+        'entity_id',
+        'description',
+        'result',
+        'reason',
+        'browser',
+        'operating_system',
+        'device_type',
+        'correlation_id',
+        'route_name',
+        'context',
+        'previous_hash',
+        'event_hash',
     ];
 
     protected $casts = [
         'old_values' => 'array',
         'new_values' => 'array',
+        'context' => 'array',
     ];
 
     public function user()

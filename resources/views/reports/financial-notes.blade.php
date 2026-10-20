@@ -4,9 +4,11 @@
             <h2 class="font-semibold text-xl text-gray-900 leading-tight">
                 {{ __('Notas Financieras SICAT - COTEL La Paz') }}
             </h2>
-            <button type="button" onclick="window.print()" class="rounded bg-slate-800 px-4 py-2 text-sm font-semibold text-white print:hidden">
-                Imprimir reporte
-            </button>
+            @can('reports.print')
+                <button type="button" id="print-financial-notes" class="rounded bg-slate-800 px-4 py-2 text-sm font-semibold text-white print:hidden">
+                    Imprimir reporte
+                </button>
+            @endcan
         </div>
     </x-slot>
 
@@ -31,13 +33,6 @@
                 </form>
                 <p class="mt-3 text-xs text-slate-500">
                     Reporte generado {{ now()->format('d/m/Y') }}. El corte 2026 aplica al saldo de apertura del escenario y a los movimientos/depreciaciones con fecha efectiva hasta la fecha seleccionada.
-                </p>
-            </section>
-
-            <section class="rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-950">
-                <h3 class="font-semibold">Escenario de simulación SICAT</h3>
-                <p class="mt-1">
-                    Las cuentas 2023–2024 se distribuyeron por activo proporcionalmente a los saldos originales archivados para reproducir los totales históricos de referencia. Depreciación y perfiles también son simulados. Ningún valor de esta pantalla acredita conciliación oficial con el mayor contable.
                 </p>
             </section>
 
@@ -254,7 +249,7 @@
                                                 <td class="px-4 py-3 text-sm text-gray-700" colspan="{{ isset($note['cutoff_date']) ? 3 : 2 }}">Total {{ $note['title'] }}</td>
                                                 @foreach($note['years'] as $year)
                                                     <td class="px-4 py-3 text-right text-sm text-gray-900">
-                                                        {{ $note['totals'][$year] === null ? 'Sin dato' : number_format((float) $note['totals'][$year], 2) }}
+                                                        {{ $note['totals'][$year] === null ? 'Sin nota' : number_format((float) $note['totals'][$year], 2) }}
                                                     </td>
                                                 @endforeach
                                                 @if(isset($note['cutoff_date']))
@@ -280,4 +275,28 @@
             section { break-inside: avoid; }
         }
     </style>
+    <script>
+        document.getElementById('print-financial-notes')?.addEventListener('click', async () => {
+            try {
+                const response = await fetch(@json(route('reports.financial-notes.print')), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': @json(csrf_token()),
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        management: @json($selectedManagement),
+                        cutoff_date: @json($cutoffDate),
+                    }),
+                });
+                if (!response.ok) {
+                    throw new Error('No se pudo registrar la impresión en auditoría.');
+                }
+                window.print();
+            } catch (error) {
+                window.alert(error.message);
+            }
+        });
+    </script>
 </x-app-layout>

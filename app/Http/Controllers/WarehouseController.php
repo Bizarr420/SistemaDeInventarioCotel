@@ -7,11 +7,15 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use App\Traits\AuthorizesPermission;
 
 class WarehouseController extends Controller
 {
+    use AuthorizesPermission;
+
     public function index(): View
     {
+        $this->authorizePermission('inventory.view');
         $warehouses = Warehouse::withCount('stocks')
             ->withSum('stocks as total_stock', 'current_stock')
             ->orderBy('name')
@@ -23,11 +27,13 @@ class WarehouseController extends Controller
 
     public function create(): View
     {
+        $this->authorizePermission('inventory.create');
         return view('warehouses.create');
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $this->authorizePermission('inventory.create');
         $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'code' => ['required', 'string', 'max:50', 'unique:warehouses,code'],
@@ -41,11 +47,13 @@ class WarehouseController extends Controller
 
     public function edit(Warehouse $warehouse): View
     {
+        $this->authorizePermission('inventory.update');
         return view('warehouses.edit', compact('warehouse'));
     }
 
     public function update(Request $request, Warehouse $warehouse): RedirectResponse
     {
+        $this->authorizePermission('inventory.update');
         $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'code' => [
@@ -64,6 +72,7 @@ class WarehouseController extends Controller
 
     public function destroy(Warehouse $warehouse): RedirectResponse
     {
+        $this->authorizePermission('inventory.delete');
         if ($warehouse->stocks()->exists()) {
             return redirect()
                 ->route('warehouses.index')

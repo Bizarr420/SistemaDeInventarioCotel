@@ -15,15 +15,23 @@ class FixedAssetLedgerService
             ->join('categories', 'categories.id', '=', 'assets.category_id')
             ->leftJoin('fixed_asset_accounts as accounts', 'accounts.id', '=', 'valuations.fixed_asset_account_id')
             ->where('valuations.valuation_year', $year)
-            ->when($year === 2026, fn ($builder) => $builder->whereDate('valuations.as_of_date', '<=', $cutoffDate))
-            ->get([
+            ->when($year === 2026, fn ($builder) => $builder->where('valuations.as_of_date', '<=', $cutoffDate.' 23:59:59.999999'))
+            ->selectRaw('
+                assets.category_id,
+                accounts.account_code,
+                accounts.description as account_description,
+                categories.name as category_name,
+                categories.description as category_description,
+                SUM(CAST(ROUND(valuations.amount * 100, 0) AS INTEGER)) as amount_cents
+            ')
+            ->groupBy(
                 'assets.category_id',
                 'accounts.account_code',
-                'accounts.description as account_description',
-                'categories.name as category_name',
-                'categories.description as category_description',
-                'valuations.amount',
-            ]);
+                'accounts.description',
+                'categories.name',
+                'categories.description',
+            )
+            ->get();
 
         foreach ($query as $record) {
             $code = $record->account_code ?: $this->accountCodeFromCategory($record->category_name);
@@ -33,26 +41,28 @@ class FixedAssetLedgerService
 
             $balances[$code]['detail'] = $record->account_description ?: ($record->category_description ?: $record->category_name);
             $balances[$code]['category_id'] = (int) $record->category_id;
-            $balances[$code]['cents'] = ($balances[$code]['cents'] ?? 0) + $this->toCents((string) $record->amount);
+            $balances[$code]['cents'] = ($balances[$code]['cents'] ?? 0) + (int) $record->amount_cents;
         }
 
         if ($year === 2026) {
             $movements = DB::table('fixed_asset_movements as movements')
                 ->join('fixed_asset_accounts as accounts', 'accounts.id', '=', 'movements.fixed_asset_account_id')
                 ->where('movements.period_year', 2026)
-                ->whereDate('movements.effective_date', '<=', $cutoffDate)
-                ->get([
-                    'accounts.account_code',
-                    'accounts.category_id',
-                    'accounts.description as account_description',
-                    'movements.amount',
-                ]);
+                ->where('movements.effective_date', '<=', $cutoffDate.' 23:59:59.999999')
+                ->selectRaw('
+                    accounts.account_code,
+                    accounts.category_id,
+                    accounts.description as account_description,
+                    SUM(CAST(ROUND(movements.amount * 100, 0) AS INTEGER)) as amount_cents
+                ')
+                ->groupBy('accounts.account_code', 'accounts.category_id', 'accounts.description')
+                ->get();
 
             foreach ($movements as $movement) {
                 $code = $movement->account_code;
                 $balances[$code]['detail'] = $movement->account_description;
                 $balances[$code]['category_id'] = (int) $movement->category_id;
-                $balances[$code]['cents'] = ($balances[$code]['cents'] ?? 0) + $this->toCents((string) $movement->amount);
+                $balances[$code]['cents'] = ($balances[$code]['cents'] ?? 0) + (int) $movement->amount_cents;
             }
         }
 
@@ -65,21 +75,23 @@ class FixedAssetLedgerService
         $entries = DB::table('fixed_asset_depreciation_entries as entries')
             ->join('fixed_asset_accounts as accounts', 'accounts.id', '=', 'entries.fixed_asset_account_id')
             ->where('entries.period_year', '<=', $year)
-            ->when($year === 2026, fn ($builder) => $builder->whereDate('entries.effective_date', '<=', $cutoffDate))
-            ->whereDate('entries.effective_date', '<=', $year === 2026 ? $cutoffDate : "{$year}-12-31")
-            ->get([
-                'accounts.account_code',
-                'accounts.description',
-                'entries.amount',
-                'entries.source',
-            ]);
+            ->when($year === 2026, fn ($builder) => $builder->where('entries.effective_date', '<=', $cutoffDate.' 23:59:59.999999'))
+            ->where('entries.effective_date', '<=', ($year === 2026 ? $cutoffDate : "{$year}-12-31").' 23:59:59.999999')
+            ->selectRaw('
+                accounts.account_code,
+                accounts.description,
+                SUM(CAST(ROUND(entries.amount * 100, 0) AS INTEGER)) as amount_cents,
+                MAX(CASE WHEN entries.source LIKE \'SICAT_SIMULATION%\' THEN 1 ELSE 0 END) as is_simulated
+            ')
+            ->groupBy('accounts.account_code', 'accounts.description')
+            ->get();
 
         foreach ($entries as $entry) {
             $code = $entry->account_code;
             $balances[$code]['detail'] = $entry->description ?: 'Depreciación acumulada';
-            $balances[$code]['cents'] = ($balances[$code]['cents'] ?? 0) - $this->toCents((string) $entry->amount);
+            $balances[$code]['cents'] = ($balances[$code]['cents'] ?? 0) - (int) $entry->amount_cents;
             $balances[$code]['simulated'] = ($balances[$code]['simulated'] ?? false)
-                || str_starts_with((string) $entry->source, 'SICAT_SIMULATION');
+                || (bool) $entry->is_simulated;
         }
 
         return $this->formatBalances($balances);
@@ -91,40 +103,37 @@ class FixedAssetLedgerService
         $depreciation = $this->note12Balances($year, $cutoffDate);
         $grossCents = array_sum(array_column($gross, 'cents'));
         $depreciationCents = array_sum(array_column($depreciation, 'cents'));
-        $assetRows = DB::table('fixed_assets')
-            ->leftJoin('fixed_asset_depreciation_entries as entries', function ($join) use ($cutoffDate, $year): void {
-                $join->on('entries.fixed_asset_id', '=', 'fixed_assets.id')
-                    ->whereDate('entries.effective_date', '<=', $cutoffDate)
-                    ->where('entries.period_year', '<=', $year);
-            })
-            ->leftJoin('fixed_asset_depreciation_parameters as parameters', 'parameters.fixed_asset_id', '=', 'fixed_assets.id')
-            ->groupBy('fixed_assets.id', 'fixed_assets.acquisition_value', 'parameters.depreciable_base')
-            ->get([
-                'fixed_assets.id',
-                'fixed_assets.acquisition_value',
-                'parameters.depreciable_base',
-                DB::raw('COUNT(DISTINCT parameters.id) as has_depreciation_parameters'),
-                DB::raw('SUM(entries.amount) as depreciation_signed'),
-            ]);
+        $entriesByAsset = DB::table('fixed_asset_depreciation_entries')
+            ->selectRaw('
+                fixed_asset_id,
+                SUM(CAST(ROUND(amount * 100, 0) AS INTEGER)) as depreciation_cents
+            ')
+            ->where('period_year', '<=', $year)
+            ->where('effective_date', '<=', $cutoffDate.' 23:59:59.999999')
+            ->groupBy('fixed_asset_id');
+        $bucketRows = DB::table('fixed_assets as assets')
+            ->leftJoin('fixed_asset_depreciation_parameters as parameters', 'parameters.fixed_asset_id', '=', 'assets.id')
+            ->leftJoinSub($entriesByAsset, 'entries', 'entries.fixed_asset_id', '=', 'assets.id')
+            ->selectRaw('
+                CASE
+                    WHEN parameters.id IS NULL THEN \'Sin parámetros\'
+                    WHEN ABS(COALESCE(entries.depreciation_cents, 0)) <= 0 THEN \'Nuevo\'
+                    WHEN COALESCE(parameters.depreciable_base, assets.acquisition_value, 0) <= 0 THEN \'Nuevo\'
+                    WHEN ABS(COALESCE(entries.depreciation_cents, 0)) >= ROUND(COALESCE(parameters.depreciable_base, assets.acquisition_value, 0) * 100, 0) THEN \'Totalmente depreciado\'
+                    WHEN ABS(COALESCE(entries.depreciation_cents, 0)) * 2 < ROUND(COALESCE(parameters.depreciable_base, assets.acquisition_value, 0) * 100, 0) THEN \'Parcialmente depreciado\'
+                    ELSE \'Altamente depreciado\'
+                END as bucket,
+                COUNT(*) as total
+            ')
+            ->groupBy('bucket')
+            ->pluck('total', 'bucket');
         $buckets = [
-            'Sin parámetros' => 0,
-            'Nuevo' => 0,
-            'Parcialmente depreciado' => 0,
-            'Altamente depreciado' => 0,
-            'Totalmente depreciado' => 0,
+            'Sin parámetros' => (int) ($bucketRows['Sin parámetros'] ?? 0),
+            'Nuevo' => (int) ($bucketRows['Nuevo'] ?? 0),
+            'Parcialmente depreciado' => (int) ($bucketRows['Parcialmente depreciado'] ?? 0),
+            'Altamente depreciado' => (int) ($bucketRows['Altamente depreciado'] ?? 0),
+            'Totalmente depreciado' => (int) ($bucketRows['Totalmente depreciado'] ?? 0),
         ];
-        foreach ($assetRows as $asset) {
-            if ((int) $asset->has_depreciation_parameters === 0) {
-                $buckets['Sin parámetros']++;
-
-                continue;
-            }
-
-            $base = $this->toCents((string) ($asset->depreciable_base ?? $asset->acquisition_value ?? '0'));
-            $depreciated = abs($this->toCents((string) ($asset->depreciation_signed ?? '0')));
-            $percentage = $base > 0 ? min(100, ($depreciated * 100) / $base) : 0;
-            $buckets[$percentage <= 0 ? 'Nuevo' : ($percentage < 50 ? 'Parcialmente depreciado' : ($percentage < 100 ? 'Altamente depreciado' : 'Totalmente depreciado'))]++;
-        }
 
         $categoryValues = [];
         foreach ($gross as $accountCode => $balance) {
@@ -137,16 +146,14 @@ class FixedAssetLedgerService
             ];
         }
 
-        $acquisitions = DB::table('fixed_asset_movements')
+        $movementCounts = DB::table('fixed_asset_movements')
             ->where('period_year', $year)
-            ->where('movement_type', 'acquisition')
-            ->whereDate('effective_date', '<=', $cutoffDate)
-            ->count();
-        $disposals = DB::table('fixed_asset_movements')
-            ->where('period_year', $year)
-            ->where('movement_type', 'disposal')
-            ->whereDate('effective_date', '<=', $cutoffDate)
-            ->count();
+            ->where('effective_date', '<=', $cutoffDate.' 23:59:59.999999')
+            ->selectRaw('movement_type, COUNT(*) as total')
+            ->groupBy('movement_type')
+            ->pluck('total', 'movement_type');
+        $acquisitions = (int) ($movementCounts['acquisition'] ?? 0);
+        $disposals = (int) ($movementCounts['disposal'] ?? 0);
 
         return [
             'gross_cents' => $grossCents,
@@ -168,15 +175,11 @@ class FixedAssetLedgerService
 
     public function assetBalanceForCutoff(int $assetId, string $cutoffDate): array
     {
-        $valuations = DB::table('fixed_asset_valuations')
+        $grossCents = (int) DB::table('fixed_asset_valuations')
             ->where('fixed_asset_id', $assetId)
             ->where('valuation_year', 2026)
-            ->whereDate('as_of_date', '<=', $cutoffDate)
-            ->get(['amount']);
-        $grossCents = 0;
-        foreach ($valuations as $valuation) {
-            $grossCents += $this->toCents((string) $valuation->amount);
-        }
+            ->where('as_of_date', '<=', $cutoffDate.' 23:59:59.999999')
+            ->sum(DB::raw('CAST(ROUND(amount * 100, 0) AS INTEGER)'));
         $grossCents += $this->sumMovementCents($assetId, $cutoffDate);
         $depreciationCents = -$this->sumDepreciationCents($assetId, $cutoffDate);
 
@@ -198,30 +201,18 @@ class FixedAssetLedgerService
 
     private function sumMovementCents(int $assetId, string $cutoffDate): int
     {
-        $sum = 0;
-        $movements = DB::table('fixed_asset_movements')
+        return (int) DB::table('fixed_asset_movements')
             ->where('fixed_asset_id', $assetId)
-            ->whereDate('effective_date', '<=', $cutoffDate)
-            ->get(['amount']);
-        foreach ($movements as $movement) {
-            $sum += $this->toCents((string) $movement->amount);
-        }
-
-        return $sum;
+            ->where('effective_date', '<=', $cutoffDate.' 23:59:59.999999')
+            ->sum(DB::raw('CAST(ROUND(amount * 100, 0) AS INTEGER)'));
     }
 
     private function sumDepreciationCents(int $assetId, string $cutoffDate): int
     {
-        $sum = 0;
-        $entries = DB::table('fixed_asset_depreciation_entries')
+        return (int) DB::table('fixed_asset_depreciation_entries')
             ->where('fixed_asset_id', $assetId)
-            ->whereDate('effective_date', '<=', $cutoffDate)
-            ->get(['amount']);
-        foreach ($entries as $entry) {
-            $sum += $this->toCents((string) $entry->amount);
-        }
-
-        return $sum;
+            ->where('effective_date', '<=', $cutoffDate.' 23:59:59.999999')
+            ->sum(DB::raw('CAST(ROUND(amount * 100, 0) AS INTEGER)'));
     }
 
     private function formatBalances(array $balances): array

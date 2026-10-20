@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FixedAssetDepreciationEntry extends Model
 {
+    use Auditable;
+
     protected $fillable = [
         'fixed_asset_id',
         'fixed_asset_account_id',

@@ -4,6 +4,9 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ $asset->name_item }}</h2>
             <div class="flex flex-wrap gap-2">
                 <a href="{{ route('fixed-assets.index') }}" class="asset-action-button asset-action-button-secondary">{{ __('Volver al listado') }}</a>
+                @can('audit.view')
+                    <a href="{{ route('audit_logs.entity', ['entityType' => 'FixedAsset', 'entityId' => $asset->id]) }}" class="asset-action-button asset-action-button-secondary">Historial de auditoría</a>
+                @endcan
                 <a href="{{ route('fixed-assets.edit', $asset) }}" class="asset-action-button asset-action-button-primary">{{ __('Editar') }}</a>
             </div>
         </div>
